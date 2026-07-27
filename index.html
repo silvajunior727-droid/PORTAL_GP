@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR"> 
 <head>
 
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -10606,9 +10606,13 @@ function renderEventTicker() {
                `</span>`;
     }).join(''); 
 
-    // =========================================================			
-    // 7. MOTOR DO LOOPING COM PAUSA PURA EM CSS (GARANTIDO)
+// =========================================================            
+    // 7. MOTOR DO LOOPING COM PAUSA E VELOCIDADE INTELIGENTE
     // =========================================================
+    
+    // O Cérebro: Calcula 1 segundo para cada 20 letras (para manter o ritmo constante)
+    let tempoIdeal = Math.max(10, htmlEventos.length / 20);
+
     container.innerHTML = `
         <style>
             .ticker-wrapper {
@@ -10620,9 +10624,10 @@ function renderEventTicker() {
             .ticker-track {
                 display: flex !important;
                 width: max-content !important;
-                animation: loopContinuo 40s linear infinite !important;
+                /* Aqui entra a mágica: a velocidade se adapta ao tamanho do texto */
+                animation: loopContinuo ${tempoIdeal}s linear infinite !important;
             }
-            /* A MÁGICA DA PAUSA VIA CSS: Congela qualquer parte do trilho ao passar o mouse */   
+            /* A MÁGICA DA PAUSA VIA CSS */   
             .ticker-wrapper:hover .ticker-track {
                 animation-play-state: paused !important;
             }
