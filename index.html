@@ -19,6 +19,17 @@
   firebase.initializeApp(firebaseConfig);  
   const db = firebase.firestore();
 
+	// =========================================================
+  // FORÇA A ATUALIZAÇÃO EM TODOS OS DISPOSITIVOS (MATA-CACHE)
+  // =========================================================
+  if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+              registration.unregister();
+          }
+      });
+  }
+
 /* =================================================================================
    1️⃣ CONFIGURAÇÃO DA AGENDA (Procure este bloco no início do seu código)
    ================================================================================= */   			  
