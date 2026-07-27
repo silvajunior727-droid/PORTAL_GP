@@ -10589,14 +10589,15 @@ function renderEventTicker() {
     }
 
     // =========================================================
-    // 6. MONTA OS EVENTOS COM ESPAÇAMENTO INTELIGENTE
+    // 6. MONTA OS EVENTOS COM ESPAÇAMENTO CLÁSSICO
     // =========================================================
     const htmlEventos = agrupados.map(p => {
         const dIni = p.start.split('-').reverse().slice(0, 2).join('/');
         const dFim = p.end.split('-').reverse().slice(0, 2).join('/');
         let periodoTexto = (p.start === p.end) ? dIni : `${dIni} A ${dFim}`;
 
-        return `<span class="ticker-item" style="display: inline-flex !important; align-items: center !important; margin: 0 !important; padding: 0 40px !important;">` +
+        // padding-right de 50px dá a distância exata de respiro entre um aviso e outro
+        return `<span class="ticker-item" style="display: inline-flex !important; align-items: center !important; margin: 0 !important; padding-right: 50px !important;">` +
                `<span style="color: #f9a825;">✦</span>📅 ` +
                `<span style="color: #856404; font-weight: bold;">(${periodoTexto})</span>` +
                `&nbsp;` +
@@ -10606,12 +10607,12 @@ function renderEventTicker() {
     }).join(''); 
 
     // =========================================================            
-    // 7. MOTOR DO LOOPING DEFINITIVO (VELOCIDADE POR EVENTO)
+    // 7. MOTOR DO LOOPING DEFINITIVO (RÁPIDO E PRÓXIMO)
     // =========================================================
     
-    // NOVO CÉREBRO: Cada evento ganha 10 segundos na tela. 
-    // Se tiver 1 evento só, garante no mínimo 15 segundos para não ficar muito rápido.
-    let tempoIdeal = Math.max(15, agrupados.length * 10);
+    // NOVO CÉREBRO MAIS RÁPIDO: Agora ele corre muito mais solto!
+    // Base de 10s, adicionando apenas 4s por cada evento na fila.
+    let tempoIdeal = Math.max(10, agrupados.length * 4);
 
     container.innerHTML = `
         <style>
@@ -10624,7 +10625,7 @@ function renderEventTicker() {
             .ticker-track {
                 display: flex !important;
                 width: max-content !important;
-                /* Velocidade adaptada à quantidade de eventos */
+                /* Velocidade mais rápida aplicada aqui */
                 animation: loopContinuo ${tempoIdeal}s linear infinite !important;
             }
             .ticker-wrapper:hover .ticker-track {
@@ -10633,9 +10634,7 @@ function renderEventTicker() {
             .ticker-bloco {
                 display: flex !important;
                 white-space: nowrap !important;
-                /* Disfarça a duplicação espalhando os itens na tela */
-                min-width: 100%;
-                justify-content: space-around; 
+                /* Retiramos o 'elástico' (space-around e min-width). Agora andam juntinhos! */
             }
             @keyframes loopContinuo {
                 0% { transform: translateX(0); }
@@ -10646,7 +10645,7 @@ function renderEventTicker() {
             <div class="ticker-track">
                 <!-- Bloco Original -->
                 <div class="ticker-bloco">${htmlEventos}</div>
-                <!-- Bloco Duplicado (Obrigatório para o looping infinito) -->
+                <!-- Bloco Duplicado (Para rodar sem piscar a tela) -->
                 <div class="ticker-bloco">${htmlEventos}</div>
             </div>
         </div>`;
