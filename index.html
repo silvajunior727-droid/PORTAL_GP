@@ -21,6 +21,37 @@
   firebase.initializeApp(firebaseConfig);  
   const db = firebase.firestore();
 
+
+// =========================================================
+// 📡 OUVIDO DO FIREBASE: ATUALIZA A AGENDA DE TODOS
+// =========================================================
+db.collection("portal_dados").doc("agenda_oficial").onSnapshot((doc) => {
+    if (doc.exists) {
+        // Pega a lista da nuvem
+        let eventosNuvem = doc.data().lista_eventos;
+        
+        // Atualiza o caderninho local invisivelmente
+        localStorage.setItem('calendarEvents', JSON.stringify(eventosNuvem));
+        
+        // Atualiza a tela (Letreiro e Calendário)
+        if (typeof renderEventTicker === "function") renderEventTicker();
+        if (typeof renderCalendarioAnual === "function") renderCalendarioAnual();
+    }
+});
+
+    // Atualiza o caderninho local de quem estiver com o portal aberto
+    localStorage.setItem('calendarEvents', JSON.stringify(eventosNuvem));
+    
+    // Atualiza o letreiro 3D imediatamente na tela
+    if (typeof renderEventTicker === "function") {
+        renderEventTicker();
+    }
+    
+    // ATENÇÃO JÚNIOR: Se você tiver uma função que desenha as bolinhas no 
+    // calendário de mesa, coloque o nome dela aqui também! 
+    // Ex: desenharCalendario();
+});
+
   // =========================================================
   // 3. FORÇA A ATUALIZAÇÃO DO SITE NO APARELHO (MATA-CACHE)
   // =========================================================
@@ -11103,7 +11134,7 @@ function renderizarListaEventosDia(data) {
 
 
 // ============================================================
-// 4. SALVAR E EDITAR (CALENDÁRIO: AVISA, MAS NÃO BLOQUEIA)
+// 4. SALVAR E EDITAR (CALENDÁRIO: NUVEM E LOCAL)
 // ============================================================
 window.salvarEventoPeloCalendario = function() {
     const titulo = document.getElementById('modalTituloInput').value;
@@ -11155,7 +11186,6 @@ window.salvarEventoPeloCalendario = function() {
         }
     });
 
-    // Se encontrou alguma exceção no período, mostra o Painel Único
     if (resumoExcecoes.length > 0) {
         let textoExibicao = resumoExcecoes.slice(0, 10).join('\n');
         if (resumoExcecoes.length > 10) {
@@ -11168,14 +11198,13 @@ window.salvarEventoPeloCalendario = function() {
     }
 
     // =========================================================================
-    // SALVAMENTO 
-    // =========================================================
+    // SALVAMENTO (LOCAL + NUVEM)
+    // =========================================================================
     let eventos = JSON.parse(localStorage.getItem('calendarEvents')) || [];
     
     const indexEdicao = document.getElementById('editIndex') ? document.getElementById('editIndex').value : "-1";
     let isEdicao = indexEdicao !== "-1";
     
-    // Se for edição, remove o evento antigo da lista antes de adicionar o novo
     if (isEdicao) {
         eventos.splice(parseInt(indexEdicao), 1); 
         if (document.getElementById('editIndex')) document.getElementById('editIndex').value = "-1";
@@ -11185,20 +11214,24 @@ window.salvarEventoPeloCalendario = function() {
         eventos.push({ date: dataIso, title: titulo, color: cor, description: desc });
     });
 
+    // 1. Salva no computador para a tela reagir rápido
     localStorage.setItem('calendarEvents', JSON.stringify(eventos));
+
+    // 2. Manda a agenda inteira para o Cofre do Firebase!
+    db.collection("portal_dados").doc("agenda_oficial").set({
+        lista_eventos: eventos
+    }).then(() => {
+        console.log("Agenda salva nas nuvens com sucesso!");
+    }).catch((error) => {
+        console.error("Erro ao salvar na nuvem:", error);
+    });
 
     // Formatação de datas para Alerta e Log
     const dataIniBr = dataInicio.split('-').reverse().join('/');
     const detalheData = (isPeriodo && dataFim) ? `de ${dataIniBr} a ${dataFim.split('-').reverse().join('/')}` : `dia ${dataIniBr}`;
 
-    // ==========================================
-    // ALERTA DETALHADO E ESTILIZADO EM LISTA
-    // ==========================================
     alert(`✅ Evento ${isEdicao ? 'editado' : 'salvo'} com sucesso!\n\nTítulo: ${titulo}\nPeríodo: ${detalheData}\nTotal de Dias: ${datasParaSalvar.length}`);
 
-    // ==========================================
-    // O ESPIÃO REGISTRA A AÇÃO (SEPARANDO NOVO DE EDIÇÃO)
-    // ==========================================
     try {
         if (typeof registrarLog === 'function') {
             const acaoLog = isEdicao ? "EDIÇÃO NA AGENDA" : "REGISTRO NA AGENDA";
@@ -11211,7 +11244,7 @@ window.salvarEventoPeloCalendario = function() {
                 registrarLog(acaoLog, `${verboLog} para o dia ${dataIniBr}: "${titulo}".`);
             }
         }
-    } catch(e) { console.error("Erro no espião de salvamento do calendário:", e); }
+    } catch(e) { console.error("Erro no espião de salvamento:", e); }
 
     if (typeof fecharModal === 'function') fecharModal();
     if (typeof renderCalendarioAnual === 'function') renderCalendarioAnual();
