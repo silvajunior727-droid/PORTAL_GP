@@ -6,21 +6,27 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>         
 
 <script>
+  // =========================================================
+  // 1. FORÇA O NAVEGADOR A ESQUECER A AGENDA ANTIGA (AMNÉSIA)
+  // =========================================================
+  localStorage.clear();
+
+  // 2. CONFIGURAÇÃO DO FIREBASE
   const firebaseConfig = {
     apiKey: "AIzaSyBEwojx6crH5h1hZN0FUcO2bmumzHdcdL8",
     authDomain: "portal-gp-e702f.firebaseapp.com",
     projectId: "portal-gp-e702f",
     storageBucket: "portal-gp-e702f.firebasestorage.app",        
     messagingSenderId: "1037077869578",
-    appId: "1:1037077869578:web:d3d1a691cf341fe9321bf3", 		                     
+    appId: "1:1037077869578:web:d3d1a691cf341fe9321bf3", 		                    
     measurementId: "G-4V0DJHGXVG"
   };
 
   firebase.initializeApp(firebaseConfig);  
   const db = firebase.firestore();
 
-	// =========================================================
-  // FORÇA A ATUALIZAÇÃO EM TODOS OS DISPOSITIVOS (MATA-CACHE)
+  // =========================================================
+  // 3. FORÇA A ATUALIZAÇÃO DO SITE NO APARELHO (MATA-CACHE)
   // =========================================================
   if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
