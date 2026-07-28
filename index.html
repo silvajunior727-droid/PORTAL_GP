@@ -14,7 +14,7 @@
     projectId: "portal-gp-e702f",
     storageBucket: "portal-gp-e702f.firebasestorage.app",        
     messagingSenderId: "1037077869578",
-    appId: "1:1037077869578:web:d3d1a691cf341fe9321bf3", 		                    
+    appId: "1:1037077869578:web:d3d1a691cf341fe9321bf3",                      
     measurementId: "G-4V0DJHGXVG"
   };
 
@@ -22,35 +22,22 @@
   const db = firebase.firestore();
 
 
-// =========================================================
-// 📡 OUVIDO DO FIREBASE: ATUALIZA A AGENDA DE TODOS
-// =========================================================
-db.collection("portal_dados").doc("agenda_oficial").onSnapshot((doc) => {
-    if (doc.exists) {
-        // Pega a lista da nuvem
-        let eventosNuvem = doc.data().lista_eventos;
-        
-        // Atualiza o caderninho local invisivelmente
-        localStorage.setItem('calendarEvents', JSON.stringify(eventosNuvem));
-        
-        // Atualiza a tela (Letreiro e Calendário)
-        if (typeof renderEventTicker === "function") renderEventTicker();
-        if (typeof renderCalendarioAnual === "function") renderCalendarioAnual();
-    }
-});
-
-    // Atualiza o caderninho local de quem estiver com o portal aberto
-    localStorage.setItem('calendarEvents', JSON.stringify(eventosNuvem));
-    
-    // Atualiza o letreiro 3D imediatamente na tela
-    if (typeof renderEventTicker === "function") {
-        renderEventTicker();
-    }
-    
-    // ATENÇÃO JÚNIOR: Se você tiver uma função que desenha as bolinhas no 
-    // calendário de mesa, coloque o nome dela aqui também! 
-    // Ex: desenharCalendario();
-});
+  // =========================================================
+  // 📡 OUVIDO DO FIREBASE: ATUALIZA A AGENDA DE TODOS
+  // =========================================================
+  db.collection("portal_dados").doc("agenda_oficial").onSnapshot((doc) => {
+      if (doc.exists) {
+          // Pega a lista da nuvem
+          let eventosNuvem = doc.data().lista_eventos;
+          
+          // Atualiza o caderninho local invisivelmente
+          localStorage.setItem('calendarEvents', JSON.stringify(eventosNuvem));
+          
+          // Atualiza a tela (Letreiro e Calendário)
+          if (typeof renderEventTicker === "function") renderEventTicker();
+          if (typeof renderCalendarioAnual === "function") renderCalendarioAnual();
+      }
+  });
 
   // =========================================================
   // 3. FORÇA A ATUALIZAÇÃO DO SITE NO APARELHO (MATA-CACHE)
@@ -62,6 +49,8 @@ db.collection("portal_dados").doc("agenda_oficial").onSnapshot((doc) => {
           }
       });
   }
+
+</script>
 
 /* =================================================================================
    1️⃣ CONFIGURAÇÃO DA AGENDA (Procure este bloco no início do seu código)
