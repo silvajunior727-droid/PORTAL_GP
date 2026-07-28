@@ -50,91 +50,66 @@
       });
   }
 
-</script>
-
+<script>
 /* =================================================================================
-   1️⃣ CONFIGURAÇÃO DA AGENDA (Procure este bloco no início do seu código)
-   ================================================================================= */   			  
+1️⃣ CONFIGURAÇÃO DA AGENDA
+================================================================================= */
 var agendaAulas = {
-    "portugues": [1, 2, 3, 4, 5],       // Liberado de Segunda a Sexta
-    "matematica": [1, 2, 3, 4, 5],      // Liberado de Segunda a Sexta
-    "ciencias": [1, 2, 3, 4, 5],        // Liberado de Segunda a Sexta
-    "geografia": [1, 2, 3, 4, 5],       // Liberado de Segunda a Sexta
-    "edfisica": [1, 2, 3, 4, 5],        // Liberado de Segunda a Sexta (Ajustado para bater com o seletor)
-    "historia": [1, 2, 3, 4, 5],        // Liberado de Segunda a Sexta
-    "ingles": [1, 2, 3, 4, 5],          // Liberado de Segunda a Sexta
-    "arte": [1, 2, 3, 4, 5]             // Liberado de Segunda a Sexta
+  "portugues": [1, 2, 3, 4, 5],
+  "matematica": [1, 2, 3, 4, 5],
+  "ciencias": [1, 2, 3, 4, 5],
+  "geografia": [1, 2, 3, 4, 5],
+  "edfisica": [1, 2, 3, 4, 5],
+  "historia": [1, 2, 3, 4, 5],
+  "ingles": [1, 2, 3, 4, 5],
+  "arte": [1, 2, 3, 4, 5]
 };
 
 // =========================================================
 // LER USUÁRIOS DO FIREBASE AO ABRIR O PORTAL
 // =========================================================
 function carregarUsuariosDoFirebase() {
-    // console.log("🔄 Buscando lista oficial de usuários no Firebase...");
-
-    // Vai na coleção 'sistema', no documento 'usuarios'
-    db.collection("sistema").doc("usuarios").get()
+  db.collection("sistema").doc("usuarios").get()
     .then((doc) => {
-        if (doc.exists) {
-            // 1. Se a gaveta existe, a gente pega os dados da nuvem e SOBRESCREVE a memória!
-            users = doc.data();
-            // console.log("☁️ ✅ Lista oficial de usuários carregada com sucesso!");
-            
-            // 2. Já guardamos no computador também por segurança
-            localStorage.setItem('gp_v9_users', JSON.stringify(users));
-        } else {
-            // Se a gaveta não existir (primeira vez que o portal roda com esse código novo)
-            // console.log("ℹ️ Nenhuma lista na nuvem ainda. Usando a lista do código fonte.");
-            
-            // Já aproveita o embalo e cria a gaveta no Firebase com a sua lista atual!
-            salvarUsuariosNoFirebase();
-        }
+      if (doc.exists) {
+        users = doc.data();
+        localStorage.setItem('gp_v9_users', JSON.stringify(users));
+      } else {
+        salvarUsuariosNoFirebase();
+      }
     })
     .catch((error) => {
-        console.error("❌ Erro ao tentar ler o Firebase:", error);
-        // console.log("⚠️ Usando a lista do código como plano B.");
+      console.error("❌ Erro ao tentar ler o Firebase:", error);
     });
 }
 
-// Essa linha mágica faz a função rodar SOZINHA assim que a tela do portal terminar de carregar
 window.addEventListener('load', carregarUsuariosDoFirebase);
-
 
 // =========================================================
 // BLOCO: 2. DIÁRIO - VALIDAÇÃO E SALVAMENTO (AJUSTADO)
 // =========================================================
-
-// 2. Função única de validação (Agora apenas Alerta, sem travar o campo)
 function validarDiaAula() {
-    const campoData = document.getElementById('data-aula');
-    const campoMateria = document.getElementById('selMateriaChamada');
-    
-    if (!campoData.value || !campoMateria.value) return;
+  const campoData = document.getElementById('data-aula');
+  const campoMateria = document.getElementById('selMateriaChamada');
+  if (!campoData.value || !campoMateria.value) return;
 
-    const dataSelecionada = new Date(campoData.value + "T12:00:00");
-    const diaSemana = dataSelecionada.getDay();
-    const materia = campoMateria.value.toLowerCase(); 
+  const dataSelecionada = new Date(campoData.value + "T12:00:00");
+  const diaSemana = dataSelecionada.getDay();
+  const materia = campoMateria.value.toLowerCase();
 
-    if (agendaAulas[materia]) {
-        if (!agendaAulas[materia].includes(diaSemana)) {
-            // ALERTA MANTIDO, MAS A DATA NÃO É MAIS LIMPA (campoData.value = "" removido)
-            alert("⚠️ Atenção: Não há aula desta matéria neste dia da semana! O registro será feito, mas fique atento.");
-        }
+  if (agendaAulas[materia]) {
+    if (!agendaAulas[materia].includes(diaSemana)) {
+      alert("⚠️ Atenção: Não há aula desta matéria neste dia da semana! O registro será feito, mas fique atento.");
     }
+  }
 }
 
-
-// 3. Aplica a validação nos campos SOMENTE após a página estar 100% carregada
 document.addEventListener('DOMContentLoaded', function() {
-    const campoData = document.getElementById('data-aula');
-    const campoMateria = document.getElementById('selMateriaChamada');
-    
-    // Adicionamos uma trava de segurança para evitar erro caso o botão não exista na tela
-    if (campoData) campoData.addEventListener('change', validarDiaAula);
-    if (campoMateria) campoMateria.addEventListener('change', validarDiaAula);
+  const campoData = document.getElementById('data-aula');
+  const campoMateria = document.getElementById('selMateriaChamada');
+  if (campoData) campoData.addEventListener('change', validarDiaAula);
+  if (campoMateria) campoMateria.addEventListener('change', validarDiaAula);
 });
-										
-
 </script>
 
    <meta charset="UTF-8">
