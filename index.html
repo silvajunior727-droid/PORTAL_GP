@@ -1,123 +1,129 @@
 <!DOCTYPE html>
 <html lang="pt-BR"> 
 <head>
+    <!-- 1. CONFIGURAÇÕES DA PÁGINA (Sempre no topo) -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>Portal de Gestão - Colégio GP</title>
 
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>         
+    <!-- 2. BIBLIOTECAS EXTERNAS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script> 
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
-<script>
+    <!-- 3. SCRIPT PRINCIPAL DO PORTAL -->
+    <script>
+    // =========================================================
+    // INICIALIZAÇÃO DO FIREBASE
+    // =========================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyBEwojx6crH5h1hZN0FUcO2bmumzHdcdL8",
+      authDomain: "portal-gp-e702f.firebaseapp.com",
+      projectId: "portal-gp-e702f",
+      storageBucket: "portal-gp-e702f.firebasestorage.app",        
+      messagingSenderId: "1037077869578",
+      appId: "1:1037077869578:web:d3d1a691cf341fe9321bf3",                      
+      measurementId: "G-4V0DJHGXVG"
+    };
 
-  // 2. CONFIGURAÇÃO DO FIREBASE
-  const firebaseConfig = {
-    apiKey: "AIzaSyBEwojx6crH5h1hZN0FUcO2bmumzHdcdL8",
-    authDomain: "portal-gp-e702f.firebaseapp.com",
-    projectId: "portal-gp-e702f",
-    storageBucket: "portal-gp-e702f.firebasestorage.app",        
-    messagingSenderId: "1037077869578",
-    appId: "1:1037077869578:web:d3d1a691cf341fe9321bf3",                      
-    measurementId: "G-4V0DJHGXVG"
-  };
+    firebase.initializeApp(firebaseConfig);  
+    const db = firebase.firestore();
 
-  firebase.initializeApp(firebaseConfig);  
-  const db = firebase.firestore();
-
-
-  // =========================================================
-  // 📡 OUVIDO DO FIREBASE: ATUALIZA A AGENDA DE TODOS
-  // =========================================================
-  db.collection("portal_dados").doc("agenda_oficial").onSnapshot((doc) => {
-      if (doc.exists) {
-          // Pega a lista da nuvem
-          let eventosNuvem = doc.data().lista_eventos;
-          
-          // Atualiza o caderninho local invisivelmente
-          localStorage.setItem('calendarEvents', JSON.stringify(eventosNuvem));
-          
-          // Atualiza a tela (Letreiro e Calendário)
-          if (typeof renderEventTicker === "function") renderEventTicker();
-          if (typeof renderCalendarioAnual === "function") renderCalendarioAnual();
-      }
-  });
-
-  // =========================================================
-  // 3. FORÇA A ATUALIZAÇÃO DO SITE NO APARELHO (MATA-CACHE)
-  // =========================================================
-  if ('serviceWorker' in navigator) {
+    // =========================================================
+    // MATA-CACHE (SERVICE WORKER)
+    // =========================================================
+    if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
           for(let registration of registrations) {
               registration.unregister();
           }
       });
-  }
-
-<script>
-/* =================================================================================
-1️⃣ CONFIGURAÇÃO DA AGENDA
-================================================================================= */
-var agendaAulas = {
-  "portugues": [1, 2, 3, 4, 5],
-  "matematica": [1, 2, 3, 4, 5],
-  "ciencias": [1, 2, 3, 4, 5],
-  "geografia": [1, 2, 3, 4, 5],
-  "edfisica": [1, 2, 3, 4, 5],
-  "historia": [1, 2, 3, 4, 5],
-  "ingles": [1, 2, 3, 4, 5],
-  "arte": [1, 2, 3, 4, 5]
-};
-
-// =========================================================
-// LER USUÁRIOS DO FIREBASE AO ABRIR O PORTAL
-// =========================================================
-function carregarUsuariosDoFirebase() {
-  db.collection("sistema").doc("usuarios").get()
-    .then((doc) => {
-      if (doc.exists) {
-        users = doc.data();
-        localStorage.setItem('gp_v9_users', JSON.stringify(users));
-      } else {
-        salvarUsuariosNoFirebase();
-      }
-    })
-    .catch((error) => {
-      console.error("❌ Erro ao tentar ler o Firebase:", error);
-    });
-}
-
-window.addEventListener('load', carregarUsuariosDoFirebase);
-
-// =========================================================
-// BLOCO: 2. DIÁRIO - VALIDAÇÃO E SALVAMENTO (AJUSTADO)
-// =========================================================
-function validarDiaAula() {
-  const campoData = document.getElementById('data-aula');
-  const campoMateria = document.getElementById('selMateriaChamada');
-  if (!campoData.value || !campoMateria.value) return;
-
-  const dataSelecionada = new Date(campoData.value + "T12:00:00");
-  const diaSemana = dataSelecionada.getDay();
-  const materia = campoMateria.value.toLowerCase();
-
-  if (agendaAulas[materia]) {
-    if (!agendaAulas[materia].includes(diaSemana)) {
-      alert("⚠️ Atenção: Não há aula desta matéria neste dia da semana! O registro será feito, mas fique atento.");
     }
-  }
-}
 
-document.addEventListener('DOMContentLoaded', function() {
-  const campoData = document.getElementById('data-aula');
-  const campoMateria = document.getElementById('selMateriaChamada');
-  if (campoData) campoData.addEventListener('change', validarDiaAula);
-  if (campoMateria) campoMateria.addEventListener('change', validarDiaAula);
-});
-</script>
+    // =========================================================
+    // 📡 OUVIDO DA AGENDA (NUVEM EM TEMPO REAL)
+    // =========================================================
+    db.collection("portal_dados").doc("agenda_oficial").onSnapshot((doc) => {
+      if (doc.exists) {
+          let eventosNuvem = doc.data().lista_eventos;
+          localStorage.setItem('calendarEvents', JSON.stringify(eventosNuvem));
+          
+          if (typeof renderEventTicker === "function") renderEventTicker();
+          if (typeof renderCalendarioAnual === "function") renderCalendarioAnual();
+      }
+    });
+
+    // =========================================================
+    // CONFIGURAÇÃO DOS DIAS DE AULA
+    // =========================================================
+    var agendaAulas = {
+      "portugues": [1, 2, 3, 4, 5],
+      "matematica": [1, 2, 3, 4, 5],
+      "ciencias": [1, 2, 3, 4, 5],
+      "geografia": [1, 2, 3, 4, 5],
+      "edfisica": [1, 2, 3, 4, 5],
+      "historia": [1, 2, 3, 4, 5],
+      "ingles": [1, 2, 3, 4, 5],
+      "arte": [1, 2, 3, 4, 5]
+    };
+
+    // =========================================================
+    // 📡 OUVIDO DOS USUÁRIOS (NUVEM EM TEMPO REAL)
+    // =========================================================
+    function carregarUsuariosDoFirebase() {
+      db.collection("sistema").doc("usuarios").onSnapshot((doc) => {
+        if (doc.exists) {
+          users = doc.data();
+          localStorage.setItem('gp_v9_users', JSON.stringify(users));
+          console.log("☁️ Lista de usuários sincronizada em tempo real!");
+        } else {
+          if (typeof salvarUsuariosNoFirebase === "function") {
+            salvarUsuariosNoFirebase();
+          }
+        }
+      }, (error) => {
+        console.error("❌ Erro ao escutar usuários no Firebase:", error);
+      });
+    }
+
+    window.addEventListener('load', carregarUsuariosDoFirebase);
+
+    // =========================================================
+    // VALIDAÇÃO DE DIAS DA AGENDA NO DIÁRIO
+    // =========================================================
+    function validarDiaAula() {
+      const campoData = document.getElementById('data-aula');
+      const campoMateria = document.getElementById('selMateriaChamada');
+      if (!campoData.value || !campoMateria.value) return;
+
+      const dataSelecionada = new Date(campoData.value + "T12:00:00");
+      const diaSemana = dataSelecionada.getDay();
+      const materia = campoMateria.value.toLowerCase();
+
+      if (agendaAulas[materia]) {
+        if (!agendaAulas[materia].includes(diaSemana)) {
+          alert("⚠️ Atenção: Não há aula desta matéria neste dia da semana! O registro será feito, mas fique atento.");
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const campoData = document.getElementById('data-aula');
+      const campoMateria = document.getElementById('selMateriaChamada');
+      if (campoData) campoData.addEventListener('change', validarDiaAula);
+      if (campoMateria) campoMateria.addEventListener('change', validarDiaAula);
+    });
+    </script>
+    
+<style>
+
 
    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
     <title>Portal de Gestão - Colégio GP</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script> 
     
-<style>
+
 
         /* ORDEM CORRETA: FONTES PRIMEIRO */
 // 1️⃣ ÍNDICE 1 (CSS)
@@ -2034,57 +2040,216 @@ function createStudentStructure(name) {
 
 
 // === 2. INICIALIZAÇÃO ===
-// 5️⃣ ÍNDICE 5 (Lógica do Sistema) 
-        window.onload = function() {
-            document.getElementById('password-change-modal').style.display = 'none';
-            if (!localStorage.getItem('system_fixed_v3')) {
-                localStorage.removeItem('gp_v9_session'); 
-                localStorage.setItem('system_fixed_v3', 'true'); 
-            }
-            const savedData = localStorage.getItem('gp_v9_data');
-            const savedMedia = localStorage.getItem('gp_v9_media');
-            const savedConfig = localStorage.getItem('gp_v9_config');
-            const savedUsers = localStorage.getItem('gp_v9_users');
-            if (savedUsers) {
-                try {
-                    let parsedUsers = JSON.parse(savedUsers);
-                    if (parsedUsers['junior@gp'] && parsedUsers['junior@gp'].displayName) { users = parsedUsers; }
-                } catch (e) { }
-            }
-            if (savedData) { masterData = JSON.parse(savedData); } 
-            else { masterData = JSON.parse(JSON.stringify(INITIAL_MASTER_DATA)); }
-            if (savedMedia) mediaConfig = JSON.parse(savedMedia);
-            if (savedConfig) { let savedCfg = JSON.parse(savedConfig); config = {...config, ...savedCfg}; }
-            if (!config.minGrade) config.minGrade = 6.0;
-            if (!config.notice) config.notice = { active: false, text: '', color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', time: 0 };
-            if (!config.slideshow || !config.slideshow.images || !Array.isArray(config.slideshow.images) || config.slideshow.images.length === 0) {
-                config.slideshow = { 
-                    active: true, speed: 3000,
-                    images: [
-                        'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80',
-                        'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=1200&q=80'                
-                    ]
-                };
-            }
-            const sessionEmail = localStorage.getItem('gp_v9_session');
-            if (sessionEmail && users[sessionEmail] && users[sessionEmail].displayName) {
-                if (users[sessionEmail].blocked) {
-                    localStorage.removeItem('gp_v9_session');
-                    alert('Seu acesso foi bloqueado. Contate a direção.');
-                    return;
-                }
-                currentUser = users[sessionEmail];
-                document.getElementById('login-screen').style.display = 'none';
-                renderHome();
-            }
+// 5️⃣ ÍNDICE 5 (Lógica do Sistema com Radar Global Duplo na Nuvem ☁️☁️) 
+window.onload = function() {
+    document.getElementById('password-change-modal').style.display = 'none';
+    
+    if (!localStorage.getItem('system_fixed_v3')) {
+        localStorage.removeItem('gp_v9_session'); 
+        localStorage.setItem('system_fixed_v3', 'true'); 
+    }
+
+    const savedData = localStorage.getItem('gp_v9_data');
+    const savedMedia = localStorage.getItem('gp_v9_media');
+    const savedConfig = localStorage.getItem('gp_v9_config');
+    const savedUsers = localStorage.getItem('gp_v9_users');
+    
+    if (savedUsers) {
+        try {
+            let parsedUsers = JSON.parse(savedUsers);
+            if (parsedUsers['junior@gp'] && parsedUsers['junior@gp'].displayName) { users = parsedUsers; }
+        } catch (e) { }
+    }
+
+    if (savedData) { masterData = JSON.parse(savedData); } 
+    else { masterData = JSON.parse(JSON.stringify(INITIAL_MASTER_DATA)); }
+    
+    if (savedMedia) mediaConfig = JSON.parse(savedMedia);
+    if (savedConfig) { let savedCfg = JSON.parse(savedConfig); config = {...config, ...savedCfg}; }
+    if (!config.minGrade) config.minGrade = 6.0;
+    if (!config.notice) config.notice = { active: false, text: '', color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', time: 0 };
+    
+    if (!config.slideshow || !config.slideshow.images || !Array.isArray(config.slideshow.images) || config.slideshow.images.length === 0) {
+        config.slideshow = { 
+            active: true, speed: 3000,
+            images: ['https://i.imgur.com/2mcuq9f.jpeg', 'https://i.imgur.com/ZD5RU2c.jpeg']
         };
+    }
+
+    if (typeof db !== 'undefined') {
+
+// =====================================================================
+        // ☁️ RADAR DE CLASSES (Monitora Pesos, Alunos E Semanário em Tempo Real)
+        // =====================================================
+        db.collection('classes').onSnapshot((snapshot) => {
+            let teveMudanca = false;
+            
+            snapshot.forEach((doc) => {
+                const dadosTurma = doc.data();
+                const nomeDaTurma = doc.id;
+                
+                // 1. Se mudaram os pesos
+                if (dadosTurma.mediaConfigTurma) {
+                    mediaConfig[nomeDaTurma] = dadosTurma.mediaConfigTurma;
+                    teveMudanca = true;
+                }
+
+                // 2. Se mudaram as notas ou dados dos alunos
+                if (dadosTurma.masterDataTurma) {
+                    masterData[nomeDaTurma] = dadosTurma.masterDataTurma;
+                    teveMudanca = true;
+                }
+
+                // 3. Se mudou o semanário da turma ativa
+                if (dadosTurma.semanarioConteudo) {
+                    // Se for a turma que está aberta na tela do outro navegador, atualiza a memória e redesenha
+                    if (typeof currentClassContext !== 'undefined' && currentClassContext === nomeDaTurma) {
+                        window.memoriaSemanario = dadosTurma.semanarioConteudo;
+                        
+                        if (typeof masterData !== 'undefined' && masterData[nomeDaTurma]) {
+                            if(!masterData[nomeDaTurma][0]) masterData[nomeDaTurma][0] = {};
+                            masterData[nomeDaTurma][0].semanarioConteudo = [...window.memoriaSemanario];
+                        }
+                        
+                        teveMudanca = true;
+                    }
+                }
+            });
+
+            if (teveMudanca) {
+                localStorage.setItem('gp_v9_media', JSON.stringify(mediaConfig));
+                localStorage.setItem('gp_v9_data', JSON.stringify(masterData));
+                
+                console.log("☁️ Radar Classes: Alterações detectadas e aplicadas em tempo real!");
+                
+                // Redesenha as telas automaticamente no outro navegador
+                try { if (typeof window.renderWeekly === 'function') window.renderWeekly(); } catch(e) {}
+                try { if (typeof renderGrades === 'function') renderGrades(); } catch(e) {}
+                try { if (typeof renderPrelim === 'function') renderPrelim(); } catch(e) {}
+                try { if (typeof renderOrganizerList === 'function') renderOrganizerList(); } catch(e) {}
+            }
+        }, (error) => {
+            console.error("❌ Erro no Radar Classes:", error);
+        });
+
+
+        // =====================================================================
+        // 2. ☁️ RADAR 2: MONITOR DE PESOS E CONFIGURAÇÕES DE TURMA (Classes)
+        // =====================================================================
+        db.collection('classes').onSnapshot((snapshot) => {
+            let teveMudanca = false;
+            
+            snapshot.forEach((doc) => {
+                const dadosTurma = doc.data();
+                const nomeDaTurma = doc.id;
+                
+                if (dadosTurma.mediaConfigTurma) {
+                    mediaConfig[nomeDaTurma] = dadosTurma.mediaConfigTurma;
+                    teveMudanca = true;
+                }
+            });
+
+            if (teveMudanca) {
+                localStorage.setItem('gp_v9_media', JSON.stringify(mediaConfig));
+                console.log("☁️ Radar Classes: Pesos/Notas atualizados em tempo real!");
+                
+                try { if (typeof renderGrades === 'function') renderGrades(); } catch(e) {}
+                try { if (typeof renderPrelim === 'function') renderPrelim(); } catch(e) {}
+            }
+        }, (error) => {
+            console.error("❌ Erro no Radar Classes:", error);
+        });
+
+        // =====================================================================
+        // 3. ☁️ RADAR DE CONFIGURAÇÕES GERAIS DA ESCOLA
+        // =====================================================================
+        db.collection('escola').doc('configuracoesGerais').onSnapshot((doc) => {
+            if (doc.exists) {
+                const dadosEscola = doc.data();
+                if (dadosEscola.configGlobal) {
+                    config = { ...config, ...dadosEscola.configGlobal };
+                    
+                    if (config.exceptionOverrides && typeof window.saveExceptionOverrides === 'function') {
+                        window.saveExceptionOverrides(config.exceptionOverrides);
+                    }
+                    localStorage.setItem('gp_v9_config', JSON.stringify(config));
+                    
+                    const telaConfig = document.getElementById('config-screen');
+                    const telaHome = document.getElementById('home-screen');
+                    
+                    if (telaConfig && telaConfig.classList.contains('active')) {
+                        try { if (typeof renderConfig === 'function') renderConfig(); } catch(e) {}
+                        try { if (typeof window.renderListaExcecoes === 'function') window.renderListaExcecoes(); } catch(e) {}
+                        
+                        try {
+                            if (config.bimesters) {
+                                for(let i = 1; i <= 4; i++) {
+                                    let startInput = document.getElementById(`c-s-${i}`);
+                                    let endInput = document.getElementById(`c-e-${i}`);
+                                    if (startInput) startInput.value = config.bimesters[i].start || '';
+                                    if (endInput) endInput.value = config.bimesters[i].end || '';
+                                }
+                            }
+                            if (config.notice) {
+                                if (document.getElementById('cfg-notice-text')) document.getElementById('cfg-notice-text').value = config.notice.text || '';
+                                if (document.getElementById('cfg-notice-maxviews')) document.getElementById('cfg-notice-maxviews').value = config.notice.maxViews || 1;
+                                if (document.getElementById('cfg-notice-time')) document.getElementById('cfg-notice-time').value = config.notice.time || 0;
+                                if (document.getElementById('cfg-notice-color')) document.getElementById('cfg-notice-color').value = config.notice.color || '#ff5252';
+                            }
+                        } catch(e) {}
+                        
+                        setTimeout(() => {
+                            try {
+                                const allToggles = document.querySelectorAll('.config-toggle-content');
+                                allToggles.forEach(el => { el.style.display = 'block'; });
+                                const elSchedule = document.getElementById('schedule-content');
+                                if (elSchedule) elSchedule.style.display = 'block';
+                            } catch(e) {}
+                        }, 50);
+                    } 
+                    else if (telaHome && (telaHome.style.display !== 'none' && !telaHome.classList.contains('hidden'))) {
+                        try { if (typeof renderHome === 'function') renderHome(); } catch(e) {}
+                    }
+                }
+            }
+        });
+    }
+
+    const sessionEmail = localStorage.getItem('gp_v9_session');
+    if (sessionEmail && users[sessionEmail] && users[sessionEmail].displayName) {
+        if (users[sessionEmail].blocked) {
+            localStorage.removeItem('gp_v9_session');
+            alert('Seu acesso foi bloqueado.');
+            return;
+        }
+        currentUser = users[sessionEmail];
+        document.getElementById('login-screen').style.display = 'none';
+        renderHome();
+    }
+};
 
 
 function saveSystem() {
-            localStorage.setItem('gp_v9_data', JSON.stringify(masterData));
-            localStorage.setItem('gp_v9_media', JSON.stringify(mediaConfig));
-            localStorage.setItem('gp_v9_config', JSON.stringify(config));
-        }
+    // 1. Salva no computador local para a tela responder num piscar de olhos
+    localStorage.setItem('gp_v9_data', JSON.stringify(masterData));
+    localStorage.setItem('gp_v9_media', JSON.stringify(mediaConfig));
+    localStorage.setItem('gp_v9_config', JSON.stringify(config));
+
+    // 2. ☁️ A MÁGICA DA NUVEM: Envia a base de dados completa (masterData) para o Firebase!
+    // Usamos o documento da turma atual ou salvamos na coleção principal dependendo da sua estrutura.
+    // Como a chamada usa o masterData[currentClassContext], vamos atualizar a turma no Firebase:
+    if (typeof db !== 'undefined' && typeof currentClassContext !== 'undefined' && currentClassContext) {
+        db.collection('classes').doc(currentClassContext).set({
+            masterDataTurma: masterData[currentClassContext]
+        }, { merge: true })
+        .then(() => {
+            console.log("☁️ Dados da turma salvos na nuvem com sucesso!");
+        })
+        .catch((error) => {
+            console.error("❌ Erro ao salvar dados na nuvem:", error);
+        });
+    }
+}
 
 // =======================================
 // BLOCO GLOBAL: GUARDIÃO DE DATA LETIVA
@@ -2622,7 +2787,7 @@ function gerarRelatorioPDF() {
       <div class="titulo-area">
         <h2 style="margin:0; color:#007BFF;">RELATÓRIO DE DESEMPENHO</h2>
         <p style="margin:0; font-weight:bold;">${bimestre} - Ano Letivo ${ano}</p>
-        <p style="margin:0; font-size:0.9em;"><strong>Disciplina:</strong> ${materia}</p>
+        
       </div>
     </div>
 
@@ -2836,61 +3001,87 @@ window.tentarDesbloqueio = function() {
 
 
 function salvarObservacaoFirebase() {
-    const botaoClicado = event.target; 
     const textoParaSalvar = document.getElementById('rep-obs-texto').value;
     const nomeDoAluno = document.getElementById('rep-aluno').value;
-    const bimestreAtual = document.getElementById('rep-bimestre').value; // <--- NOVA PEÇA
+    const bimestreAtual = document.getElementById('rep-bimestre').value;
 
-    if(!nomeDoAluno || !textoParaSalvar.trim()) {
-        alert("⚠️ Verifique se selecionou o aluno e escreveu a nota!");
+    if (!nomeDoAluno) {
+        alert("⚠️ OPA! ALUNO NÃO SELECIONADO\n\nPor favor, escolha um aluno na lista antes de registrar a observação.");
         return; 
     }
 
-    botaoClicado.innerText = "⌛ SALVANDO...";
+    if (!textoParaSalvar.trim()) {
+        alert("✍️ CAMPO DE TEXTO VAZIO\n\nVocê esqueceu de escrever a observação! Digite algo antes de salvar.");
+        return; 
+    }
+
+    // Pega todas as matérias marcadas nos checkboxes
+    const materiasMarcadas = [];
+    document.querySelectorAll('.chk-materia:checked').forEach(chk => {
+        materiasMarcadas.push(chk.value);
+    });
+    const materiasTexto = materiasMarcadas.length > 0 ? materiasMarcadas.join(', ') : "Geral / Não especificada";
+
+    const botaoClicado = document.activeElement; 
+    const textoOriginal = botaoClicado.innerHTML;
+
+    botaoClicado.innerHTML = "⌛ SALVANDO...";
     botaoClicado.disabled = true;
 
     db.collection("observacoes").add({
         aluno: nomeDoAluno,
         texto: textoParaSalvar,
-        professor: localStorage.getItem('userLogado') || "Professor GP",
-        bimestre: bimestreAtual, // <--- AQUI A GAVETA DO BIMESTRE
+        professor: localStorage.getItem('userLogado') || "Professor(a)",
+        bimestre: bimestreAtual,
+        materia: materiasTexto, // <--- SALVANDO A MATÉRIA NA NUVEM!
         data: new Date()
     })
     .then(() => {
-        botaoClicado.innerText = "✅ REGISTRADO NO " + bimestreAtual;
-        botaoClicado.style.backgroundColor = "#28a745";
+        alert(`✅ SUCESSO!\n\nObservação registrada perfeitamente no ${bimestreAtual}.`);
         document.getElementById('rep-obs-texto').value = '';
+        
         setTimeout(() => {
-            botaoClicado.innerText = "Registrar Observação";
-            botaoClicado.style.backgroundColor = "";
+            botaoClicado.innerHTML = textoOriginal;
             botaoClicado.disabled = false;
-        }, 3000);
-        carregarObservacoes(nomeDoAluno);
+        }, 2000);
+    })
+    .catch((err) => {
+        console.error("Erro ao salvar:", err);
+        alert("❌ ERRO NO SISTEMA\n\nNão foi possível salvar a observação. Verifique sua conexão com a internet.");
+        
+        botaoClicado.innerHTML = textoOriginal;
+        botaoClicado.disabled = false;
     });
 }
 
-// --- ESSA É A FUNÇÃO QUE LÊ AS MENSAGENS E MOSTRA NO MURAL (COM EXCLUIR) ---
+
+
+// --- VERSÃO EM TEMPO REAL (ATUALIZA AUTOMATICAMENTE EM TODAS AS TELAS) ---
 function carregarObservacoes(nomeDoAluno) {
   const listaNoMural = document.getElementById("mural-lista");
-  const bimestreAtual = document.getElementById("rep-bimestre").value;
 
   if (!listaNoMural) return;
+  
   if (!nomeDoAluno) {
-    listaNoMural.innerHTML = `<p style="text-align:center; color:#999; padding:10px;">Selecione um aluno.</p>`;
+    listaNoMural.innerHTML = `<p style="text-align:center; color:#999; padding:15px; font-size: 0.95em;">
+                                👆 <b>Selecione um aluno</b><br>para visualizar ou adicionar observações.
+                              </p>`;
     return;
   }
 
-  listaNoMural.innerHTML = `<p style="text-align:center; color:#666;">Buscando notas do ${bimestreAtual}...</p>`;
+  listaNoMural.innerHTML = `<p style="text-align:center; color:#666; padding:15px; font-size: 0.95em;">
+                              ⏳ <i>Sincronizando mural...</i>
+                            </p>`;
 
   db.collection("observacoes")
     .where("aluno", "==", nomeDoAluno)
-    .where("bimestre", "==", bimestreAtual)
-    .get()
-    .then((resultado) => {
+    .onSnapshot((resultado) => { 
       listaNoMural.innerHTML = "";
 
       if (resultado.empty) {
-        listaNoMural.innerHTML = `<p style="text-align:center; color:#999; padding:10px;">Nenhuma nota para o ${bimestreAtual}.</p>`;
+        listaNoMural.innerHTML = `<p style="text-align:center; color:#999; padding:15px; font-size: 0.95em;">
+                                    📭 <b>Mural Vazio</b><br>Nenhuma observação registrada para este aluno ainda.
+                                  </p>`;
         return;
       }
 
@@ -2898,12 +3089,12 @@ function carregarObservacoes(nomeDoAluno) {
       resultado.forEach((doc) => {
         const d = doc.data();
         observacoes.push({
-          id: doc.id,            // <- CHAVE para excluir
+          id: doc.id,
           ...d
         });
       });
 
-      // mais recente primeiro (se existir timestamp do Firestore)
+      // Ordenar: mais recente primeiro
       observacoes.sort((a, b) => {
         const ta = a.data?.seconds ? a.data.seconds : 0;
         const tb = b.data?.seconds ? b.data.seconds : 0;
@@ -2912,46 +3103,66 @@ function carregarObservacoes(nomeDoAluno) {
 
       observacoes.forEach((info) => {
         const dataBonita = info.data?.toDate ? info.data.toDate().toLocaleDateString("pt-BR") : "";
-        const prof = info.professor || "Professor(a)";
+        const bim = info.bimestre || "Bimestre";
+        
+        // --- PUXA A TURMA DIRETO DO COMBO DA TELA ---
+        // (Se o ID do seu combo de turma for diferente de 'rep-turma', basta ajustar o nome entre aspas abaixo)
+        const selectTurma = document.getElementById('rep-turma');
+        const turmaTela = selectTurma && selectTurma.options[selectTurma.selectedIndex] ? selectTurma.options[selectTurma.selectedIndex].text : "";
+        const turma = info.turma || turmaTela || "Turma não informada";
+        
+        const mat = info.materia || "Geral";
         const txt = (info.texto || "").toString();
 
         listaNoMural.innerHTML += `
-          <div style="background:#e3f2fd; padding:10px; border-radius:8px; margin-bottom:8px; border-left:5px solid #2196f3;">
+          <!-- Caixinha Azul com largura em 150% -->
+          <div style="width: 150%; min-height: 90px; background:#e3f2fd; padding:15px; border-radius:8px; margin-bottom:12px; border-left:5px solid #2196f3; box-sizing: border-box;">
+            
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-              <small><strong>${prof}</strong>${dataBonita ? " em " + dataBonita : ""}</small>
+              <!-- CABEÇALHO EM 1 LINHA (Bimestre, Turma do Combo, Matéria e Data) -->
+              <div style="font-size: 0.85em; color: #1565c0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <b>📌 ${bim}</b> &nbsp;|&nbsp; <b>🏫 ${turma}</b> &nbsp;|&nbsp; <b>📚 ${mat}</b> ${dataBonita ? "&nbsp;|&nbsp; 📅 " + dataBonita : ""}
+              </div>
+              
+              <!-- BOTÃO EXCLUIR CLARO COM LETRA PRETA -->
               <button
                 class="main-button btn-del"
-                style="--local-h:34px; --local-font:11px; --local-pad-y:6px; --local-pad-x:10px; --local-shadow-y:3px; min-width:110px;"
+                style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ffccc7 !important; box-shadow: 0px 3px 0px #ffa39e !important; --local-h:34px; --local-font:11px; --local-pad-y:6px; --local-pad-x:10px; min-width:110px; font-weight: bold; cursor: pointer; border-radius: 6px; flex-shrink: 0;"
                 onclick="excluirObservacao('${info.id}', '${nomeDoAluno}')"
+                onmousedown="this.style.boxShadow='0px 1px 0px #ffa39e'; this.style.transform='translateY(2px)'"
+                onmouseup="this.style.boxShadow='0px 3px 0px #ffa39e'; this.style.transform='translateY(0)'"
               >EXCLUIR</button>
             </div>
-            <div style="margin-top:6px; font-size:0.95em;">${txt.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+            
+            <div style="margin-top:8px; font-size:1em;">${txt.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
           </div>
         `;
       });
-    })
-    .catch((err) => {
+    }, (err) => {
       console.error("Erro ao carregar observações:", err);
-      listaNoMural.innerHTML = `<p style="text-align:center; color:#dc3545; padding:10px;">Erro ao buscar observações. Verifique a conexão/permissão.</p>`;
+      listaNoMural.innerHTML = `<p style="text-align:center; color:#d32f2f; padding:15px; font-size: 0.95em;">
+                                  ❌ <b>Erro de Conexão</b><br>Não foi possível sincronizar as observações. Verifique sua internet.
+                                </p>`;
     });
 }
 
 
-function excluirObservacao(docId, nomeDoAluno) {
-  const bimestreAtual = document.getElementById("rep-bimestre").value;
+function excluirObservacao(idObservacao, nomeDoAluno) {
+    // Alerta de confirmação detalhado com o nome do aluno e aviso claro
+    const confirmou = confirm(`⚠️ ATENÇÃO: EXCLUIR OBSERVAÇÃO\n\nAluno(a): ${nomeDoAluno}\n\nTem certeza de que deseja apagar permanentemente esta anotação do mural?\n\n💡 Dica: Esta anotação deixará de aparecer para todos os computadores instantaneamente!\n\nEsta ação não poderá ser desfeita!`);
 
-  if (!docId) return alert("ID do registro não encontrado.");
-  if (!confirm(`Deseja excluir este registro do ${bimestreAtual}?`)) return;
+    if (!confirmou) {
+        return;
+    }
 
-  db.collection("observacoes").doc(docId).delete()
-    .then(() => {
-      alert("Registro excluído com sucesso!");
-      carregarObservacoes(nomeDoAluno);
-    })
-    .catch((err) => {
-      console.error("Erro ao excluir:", err);
-      alert("Erro ao excluir. Verifique permissões do Firebase.");
-    });
+    db.collection("observacoes").doc(idObservacao).delete()
+        .then(() => {
+            alert(`🗑️ SUCESSO!\n\nA observação do(a) aluno(a) ${nomeDoAluno} foi removida perfeitamente do mural.`);
+        })
+        .catch((err) => {
+            console.error("Erro ao excluir observação:", err);
+            alert("❌ ERRO NO SISTEMA\n\nNão foi possível excluir a observação. Verifique sua conexão com a internet.");
+        });
 }
 
 
@@ -2959,10 +3170,17 @@ async function excluirObservacoesDoBimestreAtual() {
   const aluno = document.getElementById("rep-aluno")?.value;
   const bimestreAtual = document.getElementById("rep-bimestre")?.value;
 
-  if (!aluno) return alert("Selecione um aluno primeiro.");
-  if (!bimestreAtual) return alert("Selecione o bimestre primeiro.");
+  if (!aluno) {
+    alert("⚠️ OPA! ALUNO NÃO SELECIONADO\n\nPor favor, escolha um aluno na lista antes de prosseguir com a exclusão em massa.");
+    return;
+  }
+  
+  if (!bimestreAtual) {
+    alert("⚠️ BIMESTRE NÃO SELECIONADO\n\nPor favor, selecione o bimestre correspondente.");
+    return;
+  }
 
-  const ok = confirm(`ATENÇÃO!\nIsso vai excluir TODAS as observações do ${bimestreAtual} para:\n${aluno}\n\nDeseja continuar?`);
+  const ok = confirm(`🚨 ATENÇÃO: EXCLUSÃO EM MASSA\n\nIsso vai apagar PERMANENTEMENTE TODAS as observações do ${bimestreAtual} para:\n👤 ${aluno}\n\nDeseja realmente continuar?`);
   if (!ok) return;
 
   try {
@@ -2972,13 +3190,12 @@ async function excluirObservacoesDoBimestreAtual() {
       .get();
 
     if (snap.empty) {
-      alert(`Não há observações para excluir no ${bimestreAtual}.`);
+      alert(`📭 MURAL VAZIO\n\nNão há observações cadastradas para excluir no ${bimestreAtual}.`);
       return;
     }
 
-    // Firestore batch limita ~500 operações; vamos proteger
     if (snap.size > 450) {
-      alert(`Foram encontradas ${snap.size} observações.\nPor segurança, exclua em partes (o limite do lote é ~500).`);
+      alert(`⚠️ LIMITE DE SEGURANÇA\n\nForam encontradas ${snap.size} observações. Por segurança da nuvem, exclua em partes.`);
       return;
     }
 
@@ -2986,13 +3203,13 @@ async function excluirObservacoesDoBimestreAtual() {
     snap.docs.forEach(doc => batch.delete(doc.ref));
     await batch.commit();
 
-    alert(`Pronto! Excluídas ${snap.size} observações do ${bimestreAtual}.`);
+    alert(`🗑️ SUCESSO!\n\nForam excluídas ${snap.size} observações do ${bimestreAtual} com sucesso.`);
 
-    // Atualiza o mural
+    // Atualiza o mural em tempo real
     carregarObservacoes(aluno);
   } catch (err) {
     console.error("Erro no lote de exclusão:", err);
-    alert("Erro ao excluir em lote. Verifique permissões/regras do Firebase."); 
+    alert("❌ ERRO NO SISTEMA\n\nNão foi possível excluir o lote. Verifique sua conexão ou as regras do Firebase."); 
   }
 }
 
@@ -3192,6 +3409,7 @@ function openRelatoriosDrive() {
   modal.style.display = 'block';
 }
 
+
 function renderConfig() {
     hideScreens();
     const s = document.getElementById('config-screen');
@@ -3340,6 +3558,9 @@ let currentImagesList = config.slideshow.images.map((img, i) =>
      </div>`
 ).join('');
 
+
+
+
 // --- BLOCO 2: GALERIA DE DESTAQUES (ÍNDIGO 3D) ---
 slideshowSection = `
 <div style="margin-top:0; margin-bottom: 20px;">
@@ -3460,11 +3681,13 @@ slideshowSection = `
         <label>Nova Senha</label>
         <input type="text" id="admin-new-pass" class="input-admin" placeholder="Deixe em branco para manter a atual">
     </div>
-    <button class="main-button" 
-            style="width:100%; height:45px; background-color:#ffebee !important; color:#c62828 !important; border:1px solid #ffcdd2 !important; box-shadow: 0px 4px 0px #ef5350 !important; border-radius:6px !important; font-weight:bold !important; cursor:pointer;" 
-            onclick="adminAtualizarUsuario()">
-        🚨 Forçar Atualização no Firebase
-    </button>
+<button class="main-button" 
+        style="width:100%; height:45px; background-color:#ffffff !important; color:#000000 !important; border:1px solid #ffccc7 !important; box-shadow: 0px 4px 0px #ffa39e !important; border-radius:6px !important; font-weight:bold !important; cursor:pointer;" 
+        onclick="adminAtualizarUsuario()"
+        onmousedown="this.style.boxShadow='0px 2px 0px #ffa39e'; this.style.transform='translateY(2px)'"
+        onmouseup="this.style.boxShadow='0px 4px 0px #ffa39e'; this.style.transform='translateY(0)'">
+    🚨 Forçar Atualização no Firebase
+</button>
 </div>
 
 <div style="margin-top:20px; border-top:2px solid #ddd; padding-top:10px;">
@@ -3581,14 +3804,14 @@ slideshowSection = `
             ${userOpts}
         </select>
         
-        <button class="main-button" 
-                style="width: 160px; height: 42px; background-color: #ffccbc !important; color: #bf360c !important; border: 1px solid #ffab91 !important; box-shadow: 0px 4px 0px #ff8a65 !important; border-radius: 6px !important; font-weight: bold !important; cursor: pointer; transition: 0.1s; display:flex; align-items:center; justify-content:center; gap:6px;" 
-                onclick="adminExcluirUsuario()"
-                onmousedown="this.style.boxShadow='0px 2px 0px #ff8a65'; this.style.transform='translateY(2px)'"
-                onmouseup="this.style.boxShadow='0px 4px 0px #ff8a65'; this.style.transform='translateY(0)'"
-                onmouseleave="this.style.boxShadow='0px 4px 0px #ff8a65'; this.style.transform='translateY(0)'">
-            🚨 APAGAR
-        </button>
+<button class="main-button" 
+        style="width: 160px; height: 42px; background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ffccbc !important; box-shadow: 0px 4px 0px #ffab91 !important; border-radius: 6px !important; font-weight: bold !important; cursor: pointer; transition: 0.1s; display:flex; align-items:center; justify-content:center; gap:6px;" 
+        onclick="adminExcluirUsuario()"
+        onmousedown="this.style.boxShadow='0px 2px 0px #ffab91'; this.style.transform='translateY(2px)'"
+        onmouseup="this.style.boxShadow='0px 4px 0px #ffab91'; this.style.transform='translateY(0)'"
+        onmouseleave="this.style.boxShadow='0px 4px 0px #ffab91'; this.style.transform='translateY(0)'">
+    🚨 APAGAR
+</button>
     </div>
 </div>`;
         }
@@ -3616,7 +3839,9 @@ slideshowSection = `
 
     // Tabela da Grade
     let gradeListHTML = '';
-    const myGradeList = isAuthorizedForExtras ? config.grade : config.grade.filter(g => g.profEmail === currentUser.email || g.turma === (currentUser.classes ? currentUser.classes[0] : ''));
+
+// GRADE COMPLETA LIVRE PARA TODOS VISUALIZAREM
+const myGradeList = config.grade;
     
     myGradeList.sort((a, b) => {
         const days = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
@@ -3872,6 +4097,7 @@ s.innerHTML = `
                     </div>
 
                     <style>
+
 
 /* =================================================================================
    MEGA BACKUP: ESTILOS 3D DO MODAL E BOTÕES (BLINDADO)
@@ -4240,7 +4466,7 @@ ${exceptionsSection}
 
 <div style="margin-top:0;">
   
-    <div class="config-toggle-header" onclick="toggleConfig('profile-config-content')" 
+<div class="config-toggle-header" onclick="toggleConfig('profile-config-content')" 
          style="background-color: #eceff1; /* Cinza Azulado Pastel */
                 color: #37474f; /* Cinza Escuro Profundo */
                 border: 1px solid #cfd8dc; /* Borda Suave */
@@ -4277,7 +4503,7 @@ ${exceptionsSection}
         
         <div class="form-group">
             <label>Nova Senha</label>
-            <input type="password" id="my-new-pass" class="input-admin">
+            <input type="password" id="my-new-pass" class="input-admin" placeholder="Deixe em branco para manter a atual">
         </div>
     
         <button class="main-button" 
@@ -5099,19 +5325,34 @@ window.saveMyProfile = async function() {
     // Atualiza apenas as configurações (sem jogar você para a Home)
     if(typeof renderConfig === 'function') renderConfig();
     
-    // Atualiza saudação na tela (CONFORME O SEU CÓDIGO COM BLINDAGEM DE ERRO)
+    // ==========================================
+    // AJUSTE: SAUDAÇÃO EXATA COM NOME E CARGO
+    // ==========================================
     try {
-        const nomeCurto = newName.split('-')[0].trim().toUpperCase();
-        const textNodes = document.evaluate("//text()[contains(., 'Logado como') or contains(., 'Oi,')]", document, null, XPathResult.ANY_TYPE, null);
+        // Pega o nome e deixa só a primeira letra maiúscula (Ex: "Adriana")
+        let nomeLimpo = newName.split('-')[0].trim();
+        const nomeCurto = nomeLimpo.charAt(0).toUpperCase() + nomeLimpo.slice(1).toLowerCase();
+        
+        // Pega o cargo salvo (ou coloca um padrão caso esteja vazio)
+        const cargo = users[meuEmail].role || "Colaborador(a)";
+
+        const textNodes = document.evaluate("//text()[contains(., 'Logado') or contains(., 'Oi,') or contains(., 'Olá,')]", document, null, XPathResult.ANY_TYPE, null);
         let node = textNodes.iterateNext();
+        let nosParaMudar = [];
+        
+        // Coleta os nós primeiro para não bugar o loop
         while(node) {
-            if(node.nodeValue.includes(nomeCurto) || node.nodeValue.includes('Logado')) {
-                node.nodeValue = `Oi, ${nomeCurto}!`;
-            }
+            nosParaMudar.push(node);
             node = textNodes.iterateNext();
         }
+        
+        // Substitui pelo padrão exato de duas linhas
+        nosParaMudar.forEach(n => {
+            n.parentNode.innerHTML = `Olá, ${nomeCurto}!<br>${cargo}`;
+        });
+
     } catch(xpathErr) {
-        console.error("Erro ao atualizar texto de saudação via XPath:", xpathErr);
+        console.error("Erro ao atualizar texto de saudação:", xpathErr);
     }
 
     // ==========================================
@@ -5125,6 +5366,8 @@ window.saveMyProfile = async function() {
         }
     }, 300);
 };
+
+
 
 // =========================================================
 // 3. ADMIN - EDIÇÃO COMPLETA (Nome, Cargo e Senha)
@@ -5399,6 +5642,8 @@ window.adminCriarUsuario = async function() {
         alert('❌ Erro ao tentar salvar o novo usuário no Firebase.');
     }
 };
+
+
 // =========================================================
 // 7. ADMIN - EXCLUSÃO DEFINITIVA (MATA FANTASMA)
 // =========================================================
@@ -5459,6 +5704,8 @@ window.adminExcluirUsuario = async function() {
     }
 };
 
+
+
 window.saveConfig = function() {
     let linhasAlerta = [];
     let linhasLog = [];
@@ -5485,7 +5732,7 @@ window.saveConfig = function() {
     }
 
     // ==========================================
-    // 1. SALVAMENTO PROTEGIDO NO SISTEMA
+    // 1. SALVAMENTO PROTEGIDO NO SISTEMA LOCAL
     // ==========================================
     try {
         saveSystem();
@@ -5494,8 +5741,22 @@ window.saveConfig = function() {
         return alert('❌ Erro ao salvar as datas no sistema: ' + (e.message || 'Erro desconhecido'));
     }
 
+    // ====================================================================
+    // 2. ☁️ A MÁGICA DA NUVEM: SALVANDO O CALENDÁRIO GLOBAL NO FIREBASE
+    // ====================================================================
+    if (typeof db !== 'undefined') {
+        db.collection('escola').doc('configuracoesGerais').set({
+            configGlobal: config
+        }, { merge: true })
+        .then(() => {
+            console.log("☁️ Calendário da escola salvo na nuvem com sucesso!");
+        })
+        .catch(err => console.error("❌ Erro ao salvar calendário na nuvem:", err));
+    }
+    // ====================================================================
+
     // ==========================================
-    // 2. O ESPIÃO REGISTRA A ALTERAÇÃO DAS DATAS
+    // 3. O ESPIÃO REGISTRA A ALTERAÇÃO DAS DATAS
     // ==========================================
     try {
         const detalhes = linhasLog.join(' | ');
@@ -5503,12 +5764,12 @@ window.saveConfig = function() {
     } catch(e) { console.error("Erro no espião de bimestres:", e); }
 
     // ==========================================
-    // 3. ALERTA DETALHADO E ESTILIZADO EM LISTA
+    // 4. ALERTA DETALHADO E ESTILIZADO EM LISTA
     // ==========================================
     alert(`✅ Datas dos bimestres atualizadas com sucesso!\n\n${linhasAlerta.join('\n')}`);
 
     // ==========================================
-    // 4. MÁGICA CERTEIRA PARA MANTER A ABA ABERTA
+    // 5. MÁGICA CERTEIRA PARA MANTER A ABA ABERTA
     // ==========================================
     setTimeout(() => {
         // Usa o input do 1º bimestre como âncora para achar a aba
@@ -5522,6 +5783,7 @@ window.saveConfig = function() {
         }
     }, 300);
 };
+
         
 function ensureExceptionsStore() {
   if (!config) config = {};
@@ -5554,7 +5816,26 @@ function removeExceptionForDate(dateKey) {
 }
 
 
+// =========================================================================
+// CENTRAL DE AVISOS - ☁️ SINCRONIZADA E COM ACESSO RESTRITO
+// =========================================================================
+
 window.saveNotice = function(active) {
+    // --- 🔒 FECHADURA DIGITAL: Verifica quem está tentando alterar o aviso ---
+    let nomeLogado = "";
+    try {
+        if (typeof currentUser !== 'undefined' && currentUser && currentUser.displayName) {
+            nomeLogado = currentUser.displayName.split(' - ')[0].toUpperCase().trim();
+        }
+    } catch(e) {}
+
+    const podeEditar = (nomeLogado === "JÚNIOR" || nomeLogado === "JUNIOR" || nomeLogado === "ADRIANA" || nomeLogado === "SHEILA");
+
+    if (!podeEditar) {
+        return alert("⛔ Acesso restrito! Apenas a Direção e a Coordenação podem modificar a Central de Avisos.");
+    }
+    // --------------------------------------------------------------------------
+
     const textElement = document.getElementById("cfg-notice-text");
     const colorElement = document.getElementById("cfg-notice-color");
     const timeElement = document.getElementById("cfg-notice-time");
@@ -5580,7 +5861,7 @@ window.saveNotice = function(active) {
     };
 
     // ==========================================
-    // 1. SALVAMENTO PROTEGIDO NO SISTEMA
+    // 1. SALVAMENTO PROTEGIDO NO SISTEMA LOCAL
     // ==========================================
     try {
         saveSystem();
@@ -5588,6 +5869,20 @@ window.saveNotice = function(active) {
         console.error("Erro ao salvar o aviso:", e);
         return alert('❌ Erro ao salvar a Central de Avisos no sistema: ' + (e.message || 'Erro desconhecido'));
     }
+
+    // ====================================================================
+    // ☁️ A MÁGICA DA NUVEM: SINCRONIZANDO O AVISO NO FIREBASE
+    // ====================================================================
+    if (typeof db !== 'undefined') {
+        db.collection('escola').doc('configuracoesGerais').set({
+            configGlobal: config
+        }, { merge: true })
+        .then(() => {
+            console.log("☁️ Central de Avisos sincronizada na nuvem com sucesso!");
+        })
+        .catch(err => console.error("❌ Erro ao sincronizar avisos na nuvem:", err));
+    }
+    // ====================================================================
 
     const statusTexto = active ? 'ATIVADO 🟢' : 'DESATIVADO 🔴';
 
@@ -5782,57 +6077,6 @@ function addSlideImage() { const url = document.getElementById('new-slide-url').
 function removeSlideImage(i) { config.slideshow.images.splice(i, 1); saveSystem(); renderConfig(); setTimeout(() => toggleConfig('slideshow-config-content'), 100); }
         
 
-window.saveSlideshowConfig = function() {
-    const speedEl = document.getElementById('cfg-slide-speed');
-    const activeEl = document.getElementById('cfg-slide-active');
-
-    // Pega os valores com segurança (se der erro na velocidade, o padrão será 5)
-    const speed = speedEl ? parseInt(speedEl.value, 10) || 5 : 5;
-    const isActive = activeEl ? (activeEl.value === 'true') : true;
-
-    // Atualiza a memória local
-    config.slideshow.speed = speed;
-    config.slideshow.active = isActive;
-
-    // ==========================================
-    // 1. SALVAMENTO PROTEGIDO NO SISTEMA
-    // ==========================================
-    try {
-        saveSystem();
-    } catch(e) {
-        console.error("Erro ao salvar config do slideshow:", e);
-        return alert('❌ Erro ao salvar as configurações da galeria no sistema: ' + (e.message || 'Erro desconhecido'));
-    }
-
-    const statusLog = isActive ? 'ATIVADA' : 'DESATIVADA';
-    const statusVisual = isActive ? 'Ativada 🟢' : 'Desativada 🔴';
-
-    // ==========================================
-    // 2. O ESPIÃO REGISTRA A AÇÃO
-    // ==========================================
-    try {
-        registrarLog("CONFIG. DA GALERIA", `Alterou as definições da galeria: Status [${statusLog}] | Velocidade [${speed} milésimos de segundo].`);
-    } catch(e) { console.error("Erro no espião de configurações da galeria:", e); }
-
-    // ==========================================
-    // 3. ALERTA DETALHADO E ESTILIZADO EM LISTA
-    // ==========================================
-    alert(`✅ Configurações da galeria salvas!\n\nStatus: ${statusVisual}\nVelocidade de Transição: ${speed} milésimos de segundo por foto!`);
-
-    // ==========================================
-    // 4. MÁGICA CERTEIRA PARA MANTER A ABA ABERTA
-    // ==========================================
-    setTimeout(() => {
-        if (speedEl) {
-            const abaConteudo = speedEl.closest('.config-toggle-content') || speedEl.closest('div[id*="content"]');
-            if (abaConteudo) {
-                abaConteudo.style.display = 'block';
-                abaConteudo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-    }, 300);
-};
-
         
 function getDriveFolderUrl(teacherName, docType) {
             const folders = DRIVE_FOLDERS_MAP[teacherName];
@@ -5841,7 +6085,9 @@ function getDriveFolderUrl(teacherName, docType) {
         }
 
         let roteiroItemsCount = 0;
-        function renderDocSubmissionForm() {
+
+
+function renderDocSubmissionForm() {
             const teachers = Object.values(users).filter(u => u.displayName);
             return `<h3>Documento e Professor</h3><div style="display: flex; gap: 20px;"><div class="form-group" style="flex: 1;"><label>Tipo</label><select id="doc-type" class="input-admin" onchange="handleTypeChange(this.value)"><option value="">-- Selecione --</option><option value="roteiro">Roteiro de Estudos</option><option value="avaliacao">Avaliação</option></select></div><div class="form-group" style="flex: 1;"><label>Professor</label><select id="doc-teacher" class="input-admin" onchange="handleRoteiroTeacherChange()"><option value="">-- Selecione --</option>${teachers.map(u => `<option value="${u.displayName}">${u.displayName}</option>`).join('')}</select></div></div><div id="submission-details" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;"><p style="text-align: center; color: #6c757d;">Selecione opções.</p></div>`;
         }
@@ -6045,9 +6291,6 @@ function confirmarSaveStudyGuide() {
     // Esconde o modal
     document.getElementById('print-modal').style.display = 'none';
 
-    // =========================================================
-    // SEU CÓDIGO ORIGINAL INTACTO ABAIXO (COM AJUSTES DE BIMESTRE E IMPRESSÃO)
-    // =========================================================
     const teacherName = document.getElementById('doc-teacher').value;
     const generalDateInput = document.getElementById('roteiro-data').value;
     const items = document.querySelectorAll('#roteiro-items-container > div');
@@ -6056,10 +6299,9 @@ function confirmarSaveStudyGuide() {
     const formatDateBR = (isoDate) => { if(!isoDate) return '____/____/____'; const d = new Date(isoDate); return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; };
     const getYear = (isoDate) => isoDate ? new Date(isoDate).getFullYear() : new Date().getFullYear();
     
-    // CABEÇALHO ATUALIZADO: Com Bimestre e Trava de Quebra de Página (page-break-inside: avoid)
-    const getHeaderHTML = (teacherName, dateStr, yearStr, bimText) => `<div class="header-blindado" style="page-break-inside: avoid; break-inside: avoid;"><div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 5px;"><div><img src="LOGO GP.png" alt="Logo GP" class="logo-icone"></div><div style="text-align:right;"><h1 style="margin: 0; font-size: 1.2em; text-transform: uppercase;">ROTEIRO DE ESTUDOS - ${bimText}</h1><h3 style="margin: 5px 0 0 0; font-weight: 400; color: #555;">Colégio GP - ${yearStr}</h3></div></div><div style="display:flex; justify-content:space-between; width:100%; margin-bottom: 5px; font-size: 1.1em;"><strong style="text-align:left;">Professor: ${teacherName}</strong><strong style="text-align:right;">Data da Avaliação: ${dateStr}</strong></div></div>`;
+    // CABEÇALHO 
+    const getHeaderHTML = (teacherName, dateStr, yearStr, bimText) => `<div class="header-blindado"><div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 5px;"><div><img src="LOGO GP.png" alt="Logo GP" class="logo-icone"></div><div style="text-align:right;"><h1 style="margin: 0; font-size: 1.2em; text-transform: uppercase;">ROTEIRO DE ESTUDOS - ${bimText}</h1><h3 style="margin: 5px 0 0 0; font-weight: 400; color: #555;">Colégio GP - ${yearStr}</h3></div></div><div style="display:flex; justify-content:space-between; width:100%; margin-bottom: 5px; font-size: 1.1em;"><strong style="text-align:left;">Professor: ${teacherName}</strong><strong style="text-align:right;">Data da Avaliação: ${dateStr}</strong></div></div>`;
     
-    // Variável extra para juntar os bimestres e enviar para o banco depois
     let bimestresParaBanco = new Set();
 
     for (let i = 0; i < items.length; i++) {
@@ -6067,7 +6309,6 @@ function confirmarSaveStudyGuide() {
         const materia = item.querySelector('.item-materia').value;
         const turma = item.querySelector('.item-turma').value;
         
-        // Captura o Bimestre deste item específico
         const bimestreInput = item.querySelector('.item-bimestre');
         const bimestre = bimestreInput ? bimestreInput.value : '';
         if(bimestre) bimestresParaBanco.add(bimestre);
@@ -6076,10 +6317,16 @@ function confirmarSaveStudyGuide() {
         const finalDateIso = (specificDateEl && specificDateEl.value) ? specificDateEl.value : generalDateInput;
         const dataBR = formatDateBR(finalDateIso), year = getYear(finalDateIso);
         
+        let isFirstItemOfGroup = false;
+
+        // Verifica se mudou a turma ou a data (Novo Roteiro!)
         if (turma !== lastTurma || dataBR !== lastDate) {
-            if (i > 0) htmlBody += '<div class="quebra-serie" style="height: 60px; width:100%;"></div>';           
-            // Passamos o Bimestre para o cabeçalho
-            htmlBody += getHeaderHTML(teacherName, dataBR, year, bimestre);
+            if (i > 0) {
+                // AQUI FOI A MUDANÇA: Tiramos a quebra de página forçada!
+                // Agora adicionamos apenas um distanciamento visual com uma linha tracejada elegante.
+                htmlBody += '<div style="margin: 40px 0 30px 0; border-top: 2px dashed #ccc; width: 100%;"></div>';            
+            }
+            isFirstItemOfGroup = true; 
             lastTurma = turma; lastDate = dataBR;
         }
         
@@ -6104,8 +6351,15 @@ function confirmarSaveStudyGuide() {
             contents.forEach((c, index2) => { const pontuacao = (index2 === contents.length - 1) ? '.' : ';'; linhasHTML += `<div class="roteiro-linha-texto">${c}${pontuacao}</div>`; });
         }
         
-        // BLOCO ATUALIZADO: Com Trava de Quebra de Página (page-break-inside: avoid)
-        htmlBody += `<div class="bloco-indivisivel" style="page-break-inside: avoid; break-inside: avoid;"><h4 class="titulo-materia-compacto">${materia} - ${turma}</h4><div class="bloco-questao">${linhasHTML}</div></div>`;
+        // A BLINDAGEM CONTINUA AQUI: Garante que o bloco não seja cortado ao meio entre duas folhas
+        if (isFirstItemOfGroup) {
+            htmlBody += `<div style="page-break-inside: avoid; break-inside: avoid; display: inline-block; width: 100%; margin-bottom: 10px;">`;
+            htmlBody += getHeaderHTML(teacherName, dataBR, year, bimestre); 
+            htmlBody += `<div class="bloco-indivisivel"><h4 class="titulo-materia-compacto">${materia} - ${turma}</h4><div class="bloco-questao">${linhasHTML}</div></div>`; 
+            htmlBody += `</div>`; 
+        } else {
+            htmlBody += `<div class="bloco-indivisivel" style="page-break-inside: avoid; break-inside: avoid; display: inline-block; width: 100%; margin-bottom: 10px;"><h4 class="titulo-materia-compacto">${materia} - ${turma}</h4><div class="bloco-questao">${linhasHTML}</div></div>`;
+        }
     } 
     
     // === 3º PASSO: SALVA NO BANCO DE DADOS ===
@@ -6145,6 +6399,7 @@ function salvarRoteiroBancoDeDados(professor, bimestre, conteudoHTML) {
         console.error("Erro ao salvar o roteiro:", erro);
     }
 }
+
 
 function verRoteirosSalvos() {
     let roteirosSalvos = JSON.parse(localStorage.getItem('gp_v9_roteiros')) || {};
@@ -6188,6 +6443,7 @@ function verRoteirosSalvos() {
     `;
     modal.style.display = "block";
 }
+
 
 // 1. FUNÇÃO QUE CHAMA O ALERTA BONITÃO
 function excluirRoteiroAntigo(idDoRoteiro) {
@@ -6243,23 +6499,78 @@ function confirmarExclusaoRoteiro(idDoRoteiro) {
 function showRoteiroPreview(dataObj) {
     const modal = document.getElementById('print-modal'); 
     
-    // O SEGREDO DA IMPRESSÃO FICA MANTIDO
-    const cssImpressao = `
-        <style>
-            @media print {
-                body > *:not(#print-modal) { display: none !important; }
-                body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
-                #print-modal { position: static !important; display: block !important; background: transparent !important; }
-                .modal-content { height: auto !important; max-height: none !important; margin: 0 !important; border: none !important; box-shadow: none !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; }
-                #content-to-save { overflow: visible !important; height: auto !important; flex: none !important; min-height: 100% !important; display: block !important; }
-                .no-print, .mask-black { display: none !important; }
-            }
-        </style>
-    `;
-
-    modal.innerHTML = `
-        ${cssImpressao}
+    // =========================================================
+    // BALA DE PRATA: FUNÇÃO QUE EXTRAI O CONTEÚDO E GERA UM PDF LIMPO
+    // =========================================================
+    window.imprimirRoteiroLimpo = function() {
+        // 1. Captura o conteúdo do roteiro (com suas edições manuais feitas na tela)
+        const conteudo = document.getElementById('content-to-save').innerHTML;
         
+        // 2. Abre uma aba nova "fantasma", livre do CSS principal do portal
+        const janelaPrint = window.open('', '_blank');
+        
+        janelaPrint.document.write(`
+            <html>
+            <head>
+                <title>Impressão - Roteiro de Estudos</title>
+                <style>
+                    /* Estilos básicos para o PDF ficar lindo e estruturado */
+                    body { 
+                        font-family: 'Poppins', sans-serif, Arial; 
+                        color: #000; 
+                        background: #fff;
+                        margin: 0;
+                        padding: 20px;
+                    }
+                    
+                    /* Garantia da estética dos blocos no PDF limpo */
+                    h1, h3, h4 { margin: 0; }
+                    .titulo-materia-compacto { font-size: 16px; margin-top: 15px; margin-bottom: 5px; font-weight: bold; }
+                    .roteiro-linha-texto { font-size: 14px; margin-bottom: 5px; }
+                    .roteiro-label-bold { font-weight: bold; }
+                    .bloco-questao { padding-left: 10px; }
+                    .logo-icone { max-height: 60px; }
+                    
+                    /* =======================================================
+                       REGRAS DE OURO DA QUEBRA DE PÁGINA (Agora funcionam 100%)
+                       ======================================================= */
+                    @media print {
+                        body { padding: 0; }
+                        .no-print { display: none !important; }
+                        
+                        /* A FORÇA BRUTA: Pula de página onde a gente mandou */
+                        div[style*="page-break-before"] { 
+                            page-break-before: always !important; 
+                            break-before: page !important; 
+                        }
+                        
+                        /* A FORÇA BRUTA 2: Não corta o cabeçalho nem a matéria ao meio */
+                        .bloco-indivisivel, .header-blindado, div[style*="page-break-inside"] { 
+                            page-break-inside: avoid !important; 
+                            break-inside: avoid !important; 
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                ${conteudo}
+                <script>
+                    // Espera 0.5 segundos para garantir que a Logo do Colégio GP carregou
+                    setTimeout(function() {
+                        window.print();
+                        window.close(); // Fecha a aba fantasma sozinha depois que terminar!
+                    }, 500);
+                <\/script>
+            </body>
+            </html>
+        `);
+        janelaPrint.document.close();
+    };
+
+    // =========================================================
+    // O MODAL DE EDIÇÃO VOLTA A SER SIMPLES (Sem CSS pesado)
+    // =========================================================
+    modal.innerHTML = `
         <div class="no-print mask-black" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9998;"></div>
         
         <div class="modal-content" style="position:relative; z-index:9999; max-width: 1000px; width: 95%; max-height: 95vh; height: 95vh; margin: 2vh auto; background: #fff; border-radius: 8px; display:flex; flex-direction: column; padding: 20px; box-sizing: border-box;">
@@ -6273,14 +6584,17 @@ function showRoteiroPreview(dataObj) {
             </div>
             
             <div class="no-print" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; flex-shrink: 0;">
-                <button class="btn-preview-fixed" style="flex: 1; background: #f3e5f5 !important; color: #6a1b9a !important; border: 1px solid #e1bee7 !important; border-radius: 4px; padding: 10px; cursor: pointer; font-weight: bold;" onclick="document.getElementById('print-modal').style.display = 'none'">❌ FECHAR / ✏️ VOLTAR</button>
-                <button class="btn-preview-fixed" style="flex: 1; background: #f3e5f5 !important; color: #6a1b9a !important; border: 1px solid #e1bee7 !important; border-radius: 4px; padding: 10px; cursor: pointer; font-weight: bold;" onclick="window.print()">🖨️ IMPRIMIR / SALVAR PDF</button>
+                <button class="btn-preview-fixed" style="flex: 1; background: #f3e5f5 !important; color: #6a1b9a !important; border: 1px solid #e1bee7 !important; border-radius: 4px; padding: 10px; cursor: pointer; font-weight: bold;" onclick="document.getElementById('print-modal').style.display = 'none'">❌ FECHAR / VOLTAR</button>
+                
+                <!-- O CLIQUE AGORA ACIONA A NOSSA FUNÇÃO DA BALA DE PRATA -->
+                <button class="btn-preview-fixed" style="flex: 1; background: #f3e5f5 !important; color: #6a1b9a !important; border: 1px solid #e1bee7 !important; border-radius: 4px; padding: 10px; cursor: pointer; font-weight: bold;" onclick="imprimirRoteiroLimpo()">🖨️ IMPRIMIR / SALVAR PDF</button>
             </div>
             
         </div>
     `;
     modal.style.display = 'block'; 
 }
+
 
 // ESTA FUNÇÃO BUSCA O ROTEIRO ESCOLHIDO NO BANCO E O ABRE NA PREVISÃO
 // ESTA FUNÇÃO BUSCA O ROTEIRO ESCOLHIDO NA MEMÓRIA E O ABRE NA PREVISÃO
@@ -6475,7 +6789,10 @@ let currentClassContext = null;
 // --- COLEAR NO FINAL DO ÍNDICE 5 (RELATÓRIOS) ---
 
 
-function admSaveWeights() {
+// =========================================================
+// FUNÇÃO: SALVAR PESOS DE AVALIAÇÃO (PADRÃO DO PORTAL)
+// =========================================================
+window.admSaveWeights = async function() {
     const cls = document.getElementById('adm-class-sel').value;
     const subjSel = document.getElementById('adm-subj-sel');
     const subj = subjSel ? subjSel.value : '';
@@ -6486,7 +6803,6 @@ function admSaveWeights() {
     const nameInputs = document.querySelectorAll('.w-name'); 
     const valInputs = document.querySelectorAll('.w-val');
 
-    // 1. Coleta os dados dos inputs
     nameInputs.forEach((n, i) => {
         if(n.value) {
             let val = parseFloat(valInputs[i].value.replace(',','.')) || 0;
@@ -6494,14 +6810,11 @@ function admSaveWeights() {
         }
     });
 
-    // 2. Validação de Soma (Limite 10.0)
     const total = comps.reduce((sum, item) => sum + item.w, 0);
     if (total > 10.05) { 
-        alert(`🚫 AÇÃO BLOQUEADA!\nA soma dos pesos deu ${total.toFixed(1)}. O máximo permitido é 10.0.`);
-        return;
+        return alert(`🚫 AÇÃO BLOQUEADA!\nA soma dos pesos deu ${total.toFixed(1)}. O máximo permitido é 10.0.`);
     }
 
-    // 3. Montagem do resumo para o alerta
     let resumoPesos = comps.map(c => `• ${c.name}: ${c.w.toFixed(1)}`).join('\n');
     let mensagemConfirmacao = `⚠️ Confirma o salvamento desta configuração?\n\n` +
                               `Turma: ${cls}\n` +
@@ -6510,32 +6823,43 @@ function admSaveWeights() {
                               `Pesos definidos:\n${resumoPesos}\n\n` +
                               `Total: ${total.toFixed(1)}/10.0`;
 
-    // 4. Trava de Confirmação (O seu "Super Alerta" com OK)
-    const confirmou = confirm(mensagemConfirmacao);
-    
-    if (!confirmou) {
-        alert("Ação cancelada.");
-        return; // Sai da função sem salvar nada
-    }
+    if (!confirm(mensagemConfirmacao)) return; 
 
-    // 5. Salva no banco de dados (Apenas se clicar em OK)
+    // 1. Atualiza localmente
     if(!mediaConfig[cls]) mediaConfig[cls] = {};
     if(!mediaConfig[cls][subj]) mediaConfig[cls][subj] = {};
-    
     mediaConfig[cls][subj][bim] = { components: comps };
     
-    saveSystem();
+    localStorage.setItem('gp_v9_media', JSON.stringify(mediaConfig));
+    try { saveSystem(); } catch(e) {}
 
-    // ==========================================
-    // O ESPIÃO REGISTRA A CONFIGURAÇÃO DE PESOS
-    // ==========================================
+    // 2. Envia para a nuvem de forma assíncrona com cursor de espera
     try {
-        let resumoLog = comps.map(c => `${c.name} (${c.w.toFixed(1)})`).join(', ');
-        registrarLog("CONFIGURAÇÃO DE PESOS", `Definiu os pesos de ${subjNome} (${bim}º Bimestre) na turma ${cls}. Componentes: [${resumoLog}] (Total: ${total.toFixed(1)})`);
-    } catch(e) { console.error("Erro no espião de pesos:", e); }
+        document.body.style.cursor = 'wait';
 
-    alert('✅ Pesos de ' + subjNome + ' salvos com sucesso!');
-}
+        if (typeof db !== 'undefined') {
+            await db.collection('classes').doc(cls).set({
+                mediaConfigTurma: mediaConfig[cls]
+            }, { merge: true });
+        }
+
+        document.body.style.cursor = 'default';
+
+        // O Espião registra a ação
+        try { 
+            registrarLog("CONFIGURAÇÃO DE PESOS", `Definiu pesos de ${subjNome} (${bim}º Bim) na turma ${cls}.`); 
+        } catch(e) {}
+
+        // 3. Alerta transparente de sucesso
+        alert(`✅ Pesos de ${subjNome} salvos e sincronizados com a nuvem!\n\n💡💡 DICA DE USO: As mudanças em outros computadores aplicam-se ao alternar Abas e/ou Janelas.`);
+
+    } catch (erro) {
+        document.body.style.cursor = 'default';
+        console.error("Erro ao salvar pesos no Firebase:", erro);
+        alert("❌ Erro de comunicação com o Firebase ao salvar os pesos: " + (erro.message || 'Erro desconhecido'));
+    }
+};
+
 
 
 // --- ESTA É A NOVA FUNÇÃO QUE GERA O RELATÓRIO AUTOMÁTICO ---
@@ -7404,46 +7728,58 @@ window.imprimirSemanarioComoDiario = function() {
     win.document.close();
 };                                                                                                                      
 
-window.carregarSemanario = function() {
+
+// =========================================================
+// FUNÇÃO CARREGAR SEMANÁRIO (COM FEEDBACK VISUAL E NUVEM)
+// =========================================================
+window.carregarSemanario = async function() {
     let contextoTurma = (typeof currentClassContext !== 'undefined') ? currentClassContext : null;
     
     if (!contextoTurma) {
         return alert("⚠️ Erro: Nenhuma turma selecionada.");
     }
 
-    // console.log("🔄 Buscando dados frescos no Firebase para a turma:", contextoTurma);
+    // Feedback visual de carregamento
+    document.body.style.cursor = 'wait';
 
-    // VAI DIRETO AO BANCO DE DADOS (FORÇA A LEITURA DO QUE ESTÁ LÁ)
-    db.collection('classes').doc(contextoTurma).get().then((doc) => {
+    try {
+        const doc = await db.collection('classes').doc(contextoTurma).get();
+        
         if (doc.exists) {
             const dadosDoBanco = doc.data();
             
-            // SE EXISTIR CONTEÚDO NO BANCO, ATUALIZA A MEMÓRIA
+            // SE EXISTIR CONTEÚDO NO BANCO, ATUALIZA A MEMÓRIA AUTOMATICAMENTE
             if (dadosDoBanco.semanarioConteudo) {
                 window.memoriaSemanario = dadosDoBanco.semanarioConteudo;
                 
-                // SINCRONIZA COM O MASTERDATA GLOBAL (Para garantir que outras abas também saibam)
+                // SINCRONIZA COM O MASTERDATA GLOBAL
                 if (typeof masterData !== 'undefined' && masterData[contextoTurma]) {
                     if(!masterData[contextoTurma][0]) masterData[contextoTurma][0] = {};
                     masterData[contextoTurma][0].semanarioConteudo = [...window.memoriaSemanario];
                 }
-                
-                alert("✅ Conteúdo carregado com sucesso!");
             } else {
-                alert("ℹ️ Não há planejamento salvo para esta turma no banco.");
+                window.memoriaSemanario = [];
             }
         } else {
-            alert("⚠️ Turma não encontrada no banco de dados.");
+            window.memoriaSemanario = [];
         }
         
-        // RE-RENDERIZA A TELA (Dando o Refresh)
-        window.renderWeekly();
-        
-    }).catch((error) => {
-        console.error("Erro ao carregar do banco:", error);
-        alert("❌ Erro ao buscar dados: " + error.message);
-    });
+        document.body.style.cursor = 'default';
+
+        // RE-RENDERIZA A TELA E EMITE O ALERTA DE SUCESSO SOLICITADO
+        if (typeof window.renderWeekly === 'function') {
+            window.renderWeekly();
+        }
+
+        alert(`✅ Semanário da turma ${contextoTurma} carregado com sucesso da nuvem!`);
+
+    } catch (error) {
+        document.body.style.cursor = 'default';
+        console.error("❌ Erro ao carregar o semanário da nuvem:", error);
+        alert("❌ Erro ao carregar semanário: " + (error.message || 'Erro desconhecido'));
+    }
 };
+
 
 
 async function limparConteudoProgramaticoDaTurma() {
@@ -7466,6 +7802,7 @@ async function limparConteudoProgramaticoDaTurma() {
   alert(`Conteúdo programático apagado com sucesso!\nTurma: ${turma}`);
 }
 
+
 function openTab(id, btn) {
     document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
     document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
@@ -7473,6 +7810,7 @@ function openTab(id, btn) {
     if(target) target.style.display = 'block';
     if(btn) btn.classList.add('active');
 }
+
 
 function populateSubjectSelects() {
     const s1 = document.getElementById('sel-final-subj'), s2 = document.getElementById('sel-prelim-subj');
@@ -7989,7 +8327,7 @@ function limparDadosDaTurma() {
             if (tipo === 'CHAMADAS') resumo += `\nMatérias: ${matNomes.join(', ')}`;
         }
         
-        if (prompt(resumo + "\n\nDigite SIM para apagar:") !== "SIM") return;
+        if (prompt(resumo + "\n\nDigite SIM em letras MAIÚSCULAS para apagar:") !== "SIM") return;
 
         const mapIdx = { 'portugues': 0, 'matematica': 1, 'geografia': 2, 'historia': 3, 'ciencias': 4, 'arte': 5, 'ingles': 6, 'edfisica': 7 };
         const selectedIndices = matSelIds.map(m => mapIdx[m]);
@@ -8793,7 +9131,7 @@ function renderPrelim() {
 }
        
       
-function savePrelim() {
+window.savePrelim = function() {
   // 1) Captura os selects para pegar o TEXTO visível (ex: "Português", "1º Bimestre")
   const selBim = document.getElementById('sel-prelim-bim');
   const selSubj = document.getElementById('sel-prelim-subj');
@@ -8802,7 +9140,7 @@ function savePrelim() {
   const textoDisciplina = selSubj.options[selSubj.selectedIndex].text;
   const cls = currentClassContext;
 
-  // 2) Pega o elemento do modal (assumindo que o ID é 'print-modal' conforme seu botão NÃO)
+  // 2) Pega o elemento do modal
   const modal = document.getElementById('print-modal');
 
   // 3) Monta o modal exatamente no seu modelo, ajustando os textos
@@ -8826,10 +9164,11 @@ function savePrelim() {
   
   // Exibe o modal
   modal.style.display = "block";
-}
+};
 
-// NOVA FUNÇÃO: Chamada apenas se o usuário clicar no "SIM"
-function confirmarSavePrelim() {
+
+// NOVA FUNÇÃO: Chamada apenas se o usuário clicar no "SIM" - ☁️ COM NUVEM ATÔMICA
+window.confirmarSavePrelim = function() {
   // 1) Esconde o modal
   document.getElementById('print-modal').style.display = 'none';
 
@@ -8846,7 +9185,7 @@ function confirmarSavePrelim() {
   // 1) Salva cada campo (já normalizado e com 1 casa)
   document.querySelectorAll(".inp-prelim").forEach(inp => {
     // formata e trava no salvar (garantia)
-    formatClampBR1(inp);
+    if (typeof formatClampBR1 === 'function') formatClampBR1(inp);
 
     const i = inp.dataset.std;     // índice do aluno
     const c = inp.dataset.comp;    // índice do componente
@@ -8861,14 +9200,35 @@ function confirmarSavePrelim() {
 
   // 2) Copia a média calculada (avg-i) para a Aba 4 (grades)
   masterData[cls].forEach((std, i) => {
-    const avgText = document.getElementById("avg-" + i).innerText;  // ex: "7.5" (no seu HTML está com ponto)
-    const avg = parseFloat(String(avgText).replace(",", "."));
+    const avgElem = document.getElementById("avg-" + i);
+    if (avgElem) {
+      const avgText = avgElem.innerText;  // ex: "7.5"
+      const avg = parseFloat(String(avgText).replace(",", "."));
 
-    const pos = (parseInt(sIdx, 10) * 4) + (parseInt(bim, 10) - 1);
-    std.grades[pos] = isNaN(avg) ? null : parseFloat(avg.toFixed(1));
+      const pos = (parseInt(sIdx, 10) * 4) + (parseInt(bim, 10) - 1);
+      if(!std.grades) std.grades = [];
+      std.grades[pos] = isNaN(avg) ? null : parseFloat(avg.toFixed(1));
+    }
   });
 
   saveSystem();
+
+// ====================================================================
+  // ☁️ A MÁGICA DA NUVEM: UPDATE ATÔMICO DA TURMA (Sem fantasmas)
+  // ====================================================================
+  if (typeof db !== 'undefined' && cls) {
+      db.collection('classes').doc(cls).update({
+          masterDataTurma: masterData[cls]
+      })
+      .then(() => {
+          console.log(`☁️ Notas preliminares da turma ${cls} sincronizadas na nuvem!`);
+      })
+      .catch(err => {
+          // Fallback de segurança se for a primeira vez salvando a turma
+          db.collection('classes').doc(cls).set({ masterDataTurma: masterData[cls] }, { merge: true });
+      });
+  }
+  // ====================================================================
 
   // ==========================================
   // O ESPIÃO REGISTRA O LANÇAMENTO DE NOTAS
@@ -8879,9 +9239,10 @@ function confirmarSavePrelim() {
       registrarLog("LANÇAMENTO DE NOTAS", `Salvou notas parciais de ${textoDisciplina} (${textoBimestre}) na turma ${cls}.`);
   } catch(e) { console.error("Erro no espião preliminar:", e); }
 
-  alert("✅ Notas Preliminares salvas e enviadas para o quadro de Notas Finais!");
-  renderGrades();
-}
+  alert("✅ Notas Preliminares salvas, enviadas para o quadro de Notas Finais e sincronizadas na nuvem!");
+  if (typeof renderGrades === 'function') renderGrades();
+};
+
 
 function clampPrelimGrade10(inputEl) {
   let raw = String(inputEl.value).replace(",", ".");
@@ -9490,7 +9851,6 @@ function excluirEvento(data, titulo) {
     }
 }
 
-
 // ----------------------------------------------------
 // ORGANIZADOR (LISTA / MOVER) - SIMETRIA TOTAL E FUNCIONAL
 // ----------------------------------------------------
@@ -9547,6 +9907,7 @@ function renderOrganizerList() {
   div.innerHTML = html;
 }
 
+
 // ------------------------------
 // IMPRESSÃO (UI + SELEÇÃO)
 // ------------------------------
@@ -9598,16 +9959,51 @@ box.innerHTML = `
 }
 
 
-function moveStudent(cls, index, direction) {
-  const list = masterData[cls] || [];
-  const newIdx = index + direction;
+// =========================================================
+// FUNÇÃO: REORDENAR ALUNO (SUBIR OU DESCER NA LISTA)
+// =========================================================
+window.moveStudent = async function(cls, index, direction) {
+    const list = masterData[cls] || [];
+    const newIdx = index + direction;
 
-  if (newIdx < 0 || newIdx >= list.length) return;
+    if (newIdx < 0 || newIdx >= list.length) return;
 
-  [list[index], list[newIdx]] = [list[newIdx], list[index]];
-  saveSystem();         // salva no localStorage [file:87]
-  renderOrganizerList();
-}
+    // Pega o nome do aluno para registrar bonitinho no log
+    const alunoMovido = list[index].nome || list[index].name || "Aluno(a)";
+    const sentido = direction === -1 ? "para cima" : "para baixo";
+
+    // Efetua a troca de posição no array
+    [list[index], list[newIdx]] = [list[newIdx], list[index]];
+    
+    // Salva localmente e atualiza a tela de imediato
+    saveSystem();         
+    renderOrganizerList();
+
+    // Sincroniza com a Nuvem (Firebase)
+    try {
+        document.body.style.cursor = 'wait';
+
+        if (typeof db !== 'undefined') {
+            await db.collection("sistema").doc("masterData").set(masterData);
+        }
+
+        document.body.style.cursor = 'default';
+
+        // ==========================================
+        // O ESPIÃO REGISTRA A ORDENAÇÃO
+        // ==========================================
+        try {
+            registrarLog("ORDENAÇÃO DE ALUNO", `Moveu o(a) aluno(a) "${alunoMovido}" ${sentido} na turma ${cls}.`);
+        } catch(e) {
+            console.error("Erro no espião de ordenação:", e);
+        }
+
+    } catch (erro) {
+        document.body.style.cursor = 'default';
+        console.error("Erro ao sincronizar ordenação com o Firebase:", erro);
+        alert("❌ Erro de comunicação com o Firebase ao salvar a nova ordem dos alunos.");
+    }
+};
 
 
 // ------------------------------
@@ -9794,96 +10190,121 @@ function contarFaltasPorMateria(aluno, nomeMateria, turmaContext) {
     return totalFaltas;
 }
 
+
 window.saveGradeItem = function() {
-    const turma = document.getElementById('grade-turma').value;
-    const materia = document.getElementById('grade-materia').value;
-    const dia = document.getElementById('grade-dia').value;
-    const hora = document.getElementById('grade-hora').value;
-
-    if (!turma || !materia || !hora) { 
-        alert('⚠️ Preencha todos os campos!'); 
-        return; 
-    }
-
-    const newItem = {
-        id: Date.now().toString(),
-        prof: currentUser.displayName,
-        profEmail: currentUser.email,
-        turma,
-        materia,
-        dia,
-        hora
-    };
-
-    config.grade.push(newItem);
-
-    // ==========================================
-    // 1. SALVAMENTO PROTEGIDO NO SISTEMA
-    // ==========================================
     try {
-        saveSystem();
-    } catch(e) {
-        console.error("Erro ao salvar horário:", e);
-        return alert('❌ Erro ao salvar o horário no sistema: ' + (e.message || 'Erro desconhecido'));
-    }
+        console.log("🕵️ Iniciando o teste de salvamento...");
 
-    // ==========================================
-    // 2. O ESPIÃO REGISTRA A CRIAÇÃO DO HORÁRIO
-    // ==========================================
-    try {
-        registrarLog("CADASTRO DE HORÁRIO", `Cadastrou um novo horário para a turma ${turma} (${materia}) no dia ${dia} às ${hora}.`);
-    } catch(e) { console.error("Erro no espião de horários:", e); }
-
-    // ==========================================
-    // 3. ALERTA DETALHADO E ESTILIZADO EM LISTA
-    // ==========================================
-    alert(`✅ Horário cadastrado com sucesso!\n\nTurma: ${turma}\nMatéria: ${materia}\nDia: ${dia}\nHorário: ${hora}`);
-    
-    if(typeof renderConfig === 'function') renderConfig();
-
-    // ==========================================
-    // 4. MÁGICA CERTEIRA PARA MANTER A ABA ABERTA
-    // ==========================================
-    setTimeout(() => {
-        const el = document.getElementById('schedule-content');
-        if (el) {
-            el.style.display = 'block';
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });    
+        // 1. Verifica se a variável config existe e protege a gaveta da grade
+        if (typeof config === 'undefined') {
+            window.config = {};
         }
-    }, 300);
+        if (!config.grade || !Array.isArray(config.grade)) {
+            config.grade = [];
+        }
+
+        // 2. Busca os campos na tela pelo ID
+        const elTurma = document.getElementById('grade-turma');
+        const elMateria = document.getElementById('grade-materia');
+        const elDia = document.getElementById('grade-dia');
+        const elHora = document.getElementById('grade-hora');
+
+        // 3. Se não achar os campos no HTML, o botão trava aqui e te avisa!
+        if (!elTurma || !elMateria || !elDia || !elHora) {
+            alert("❌ O botão falhou porque não achou os campos de preenchimento na tela! Abra o Console (F12) para ver qual está faltando.");
+            console.error("Status dos campos:", { turma: !!elTurma, materia: !!elMateria, dia: !!elDia, hora: !!elHora });
+            return;
+        }
+
+        const turma = elTurma.value;
+        const materia = elMateria.value;
+        const dia = elDia.value;
+        const hora = elHora.value;
+
+        if (!turma || !materia || !hora) { 
+            alert('⚠️ Preencha todos os campos antes de salvar!'); 
+            return; 
+        }
+
+        // 4. Monta o item garantindo que os dados do professor logado existem para não travar
+        const newItem = {
+            id: Date.now().toString(),
+            prof: (typeof currentUser !== 'undefined' && currentUser.displayName) ? currentUser.displayName : 'Professor',
+            profEmail: (typeof currentUser !== 'undefined' && currentUser.email) ? currentUser.email : 'sem-email',
+            turma: turma,
+            materia: materia,
+            dia: dia,
+            hora: hora
+        };
+
+        config.grade.push(newItem);
+
+        // 5. Salva no computador
+        if (typeof saveSystem === 'function') {
+            saveSystem();
+        }
+
+        // 6. Envia para o Firebase
+        if (typeof db !== 'undefined') {
+            db.collection('escola').doc('configuracoesGerais').set({
+                configGlobal: config
+            }, { merge: true })
+            .then(() => {
+                console.log("☁️ Salvamento na Grade feito na Nuvem com sucesso!");
+            })
+            .catch(err => {
+                console.error("❌ Falha ao enviar Grade para a Nuvem:", err);
+            });
+        }
+
+// ==========================================
+// 4. ALERTA DETALHADO E ESTILIZADO EM LISTA
+// ==========================================
+alert(`✅ Horário cadastrado com sucesso!\n\nTurma: ${turma}\nMatéria: ${materia}\nDia: ${dia}\nHorário: ${hora}`);
+        
+        if(typeof renderConfig === 'function') renderConfig();
+
+    } catch (erro) {
+        // SE ALGUMA COISA DER ERRADO, O ALARME TOCA AQUI E NOS MOSTRA O CULPADO:
+        console.error("🔥 ERRO FATAL DETECTADO:", erro);
+        alert("🔥 Achei o erro! O código tropeçou nisso: " + erro.message);
+    }
 };
 
 
 window.deleteGradeItem = function(id) {
-    // Procura o item antes de apagar para registrar e exibir nos detalhes
     const itemParaApagar = config.grade ? config.grade.find(g => g.id === id) : null;
 
     if (!confirm('🗑️ Deseja realmente apagar este horário?')) return;
 
-    // Remove da lista
     config.grade = config.grade.filter(g => g.id !== id);
 
-    // ==========================================
-    // 1. SALVAMENTO PROTEGIDO NO SISTEMA
-    // ==========================================
     try {
-        saveSystem();
+        if (typeof saveSystem === 'function') saveSystem();
     } catch(e) {
-        console.error("Erro ao apagar horário:", e);
+        console.error("Erro ao apagar horário localmente:", e);
         return alert('❌ Erro ao salvar a exclusão do horário no sistema: ' + (e.message || 'Erro desconhecido'));
     }
 
-    // ==========================================
-    // 2. O ESPIÃO REGISTRA A EXCLUSÃO DO HORÁRIO
-    // ==========================================
+    if (typeof db !== 'undefined') {
+        db.collection('escola').doc('configuracoesGerais').set({
+            configGlobal: config
+        }, { merge: true })
+        .then(() => {
+            console.log("☁️ Exclusão sincronizada na nuvem com sucesso!");
+        })
+        .catch(err => {
+            console.error("❌ Erro ao sincronizar exclusão na nuvem:", err);
+        });
+    }
+
     try {
-        const infoLog = itemParaApagar ? `Turma: ${itemParaApagar.turma} (${itemParaApagar.materia}) - ${itemParaApagar.dia} às ${itemParaApagar.hora}` : `ID: ${id}`;
-        registrarLog("EXCLUSÃO DE HORÁRIO", `Removeu o horário: [${infoLog}].`);
+        if (typeof registrarLog === 'function') {
+            const infoLog = itemParaApagar ? `Turma: ${itemParaApagar.turma} (${itemParaApagar.materia}) - ${itemParaApagar.dia} às ${itemParaApagar.hora}` : `ID: ${id}`;
+            registrarLog("EXCLUSÃO DE HORÁRIO", `Removeu o horário: [${infoLog}].`);
+        }
     } catch(e) { console.error("Erro no espião de exclusão de horários:", e); }
 
-    // ==========================================
-    // 3. ALERTA DETALHADO E ESTILIZADO EM LISTA
-    // ==========================================
     if (itemParaApagar) {
         alert(`✅ Horário apagado com sucesso!\n\nTurma: ${itemParaApagar.turma}\nMatéria: ${itemParaApagar.materia}\nDia: ${itemParaApagar.dia}\nHorário: ${itemParaApagar.hora}`);
     } else {
@@ -9892,9 +10313,6 @@ window.deleteGradeItem = function(id) {
     
     if(typeof renderConfig === 'function') renderConfig();
 
-    // ==========================================
-    // 4. MÁGICA CERTEIRA PARA MANTER A ABA ABERTA
-    // ==========================================
     setTimeout(() => {
         const el = document.getElementById('schedule-content');
         if (el) {
@@ -10436,9 +10854,9 @@ function abrirModalLogs() {
             }
             
             const botaoExcluirIndividual = podeExcluir ? `
-                <button onclick="excluirLogEspecifico('${logId}')" style="background:#f0f8ff; border:1px solid #d0e8ff; border-radius:6px; padding:6px 10px; cursor:pointer; font-size:15px; margin-left:12px; transition:0.2s; display:flex; align-items:center; justify-content:center;" title="Apagar este registro" onmouseover="this.style.background='#e3f2fd'; this.style.transform='scale(1.1)'" onmouseout="this.style.background='#f0f8ff'; this.style.transform='scale(1)'">
-                    🗑️
-                </button>
+<button onclick="excluirLogEspecifico('${logId}')" style="background: #e8f2ff !important; border: 1px solid #b8d4ff !important; border-radius: 6px !important; padding: 6px 10px !important; cursor: pointer !important; font-size: 15px !important; margin-left: 12px !important; transition: 0.2s !important; display: flex !important; align-items: center !important; justify-content: center !important;" title="Apagar este registro" onmouseover="this.style.background='#e8f2ff !important'; this.style.transform='scale(1.1)'" onmouseout="this.style.background='#e8f2ff !important'; this.style.transform='scale(1)'">
+    🗑️
+</button>
             ` : ``;
 
             htmlDosLogs += `
@@ -10529,7 +10947,6 @@ window.excluirLogEspecifico = async function(logId) {
         alert("❌ Erro de comunicação com o Firebase ao apagar o registro: " + (erro.message || 'Erro desconhecido'));
     }
 };
-
 
 
 /* =================================================================================
@@ -11295,20 +11712,30 @@ function excluirEvento(data, titulo) {
 
 // FUNÇÃO AUXILIAR: Evita repetir código de atualização na tela
 function atualizarTelaAposExclusao(novosEventos, dataSelecionada) {
-    // Salva no banco de dados
+    // 1. Salva no computador local para a tela reagir rápido
     localStorage.setItem('calendarEvents', JSON.stringify(novosEventos));
     
-    // Atualiza a listagem do modal
+    // 2. ☁️ A MÁGICA QUE FALTAVA: Manda a lista atualizada (sem o evento) para o Firebase!
+    db.collection("portal_dados").doc("agenda_oficial").set({
+        lista_eventos: novosEventos
+    }).then(() => {
+        console.log("☁️ Exclusão sincronizada com a nuvem com sucesso!");
+    }).catch((error) => {
+        console.error("❌ Erro ao excluir na nuvem:", error);
+    });
+    
+    // 3. Atualiza a listagem do modal
     if (typeof renderizarListaEventosDia === 'function') {
         renderizarListaEventosDia(dataSelecionada);
     } else if (typeof listarEventosDoDia === 'function') {
         listarEventosDoDia(dataSelecionada);
     }
     
-    // Atualiza os dias coloridos no fundo e o letreiro
+    // 4. Atualiza os dias coloridos no fundo e o letreiro
     if (typeof renderCalendarioAnual === 'function') renderCalendarioAnual();
     if (typeof renderEventTicker === 'function') renderEventTicker();
 }
+
 
 function fecharModal() { 
     const modal = document.getElementById('modalEventoCalendario');
@@ -11348,28 +11775,68 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// Função para adicionar aluno direto pela tela de organização 
-function admAddStudentOrganizer() {    
+// =========================================================
+// FUNÇÃO: ADICIONAR ALUNO DIRETO PELA TELA DE ORGANIZAÇÃO
+// =========================================================
+window.admAddStudentOrganizer = async function() {
     const cls = document.getElementById('org-class-sel').value;
     const nameInput = document.getElementById('new-student-name');         
-    const name = nameInput.value.toUpperCase(); 
-    if(name) {    
-        if(!masterData[cls]) masterData[cls]=[];    
-        masterData[cls].push(createStudentStructure(name));    
-        saveSystem();    
+    const name = nameInput.value.trim().toUpperCase(); 
+
+    if (!cls) {
+        return alert('⚠️ Selecione uma turma antes de cadastrar o aluno!');
+    }
+
+    if (!name) {
+        return alert('⚠️ Digite o nome do aluno antes de cadastrar!');
+    }
+
+    // Trava visual de carregamento
+    document.body.style.cursor = 'wait';
+
+    try {
+        if (!masterData[cls]) masterData[cls] = [];
         
+        // Cria a estrutura padrão do aluno
+        masterData[cls].push(createStudentStructure(name)); 
+        
+        // Salva localmente
+        saveSystem(); 
+
+        // Salva na Nuvem (Firebase) - O padrão do nosso portal!
+        if (typeof db !== 'undefined') {
+            await db.collection("sistema").doc("masterData").set(masterData);
+        }
+
+        document.body.style.cursor = 'default';
+
         // ==========================================
         // O ESPIÃO REGISTRA A AÇÃO
         // ==========================================
-        registrarLog("CADASTRO DE ALUNO", `Adicionou o(a) aluno(a) "${name}" na turma ${cls}.`);
-        
-        renderOrganizerList();    
-        nameInput.value = '';    
-        nameInput.focus();    
-    } else {
-        alert("Digite o nome do aluno!");
+        try {
+            registrarLog("CADASTRO DE ALUNO", `Adicionou o(a) aluno(a) "${name}" na turma ${cls}.`);
+        } catch(e) { 
+            console.error("Erro no espião de cadastro de aluno:", e); 
+        }
+
+        // ==========================================
+        // ALERTA DETALHADO NO NOSSO PADRÃO
+        // ==========================================
+        const anoAtual = new Date().getFullYear();
+        alert(`✅ Aluno cadastrado com sucesso!\n\n👤 Nome: ${name}\n📚 Turma: ${cls}\n📅 Ano Letivo: ${anoAtual}`);
+
+        // Atualiza a tela e limpa os campos
+        renderOrganizerList(); 
+        nameInput.value = ''; 
+        nameInput.focus(); 
+
+    } catch (erro) {
+        document.body.style.cursor = 'default';
+        console.error("Erro ao salvar aluno no Firebase:", erro);
+        alert('❌ Erro de comunicação com o Firebase ao cadastrar o aluno: ' + (erro.message || 'Erro desconhecido'));
     }
-}
+};
+
 
 // 1. Função que desenha e abre o alerta customizado para excluir aluno
 function admDelStudentOrganizer(cls, idx) { 
@@ -11421,27 +11888,55 @@ function admDelStudentOrganizer(cls, idx) {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
-// 2. Função que executa a exclusão de verdade caso o usuário clique em "SIM"
-function confirmarExclusaoAluno(cls, idx) {
-    // Fecha a janela de alerta
-    document.getElementById('modalExcluirAluno').remove();
-    
-    // Captura o nome do aluno ANTES de ele ser apagado da lista
-    let nomeAlunoExcluido = "Aluno não identificado";
-    if (masterData[cls] && masterData[cls][idx]) {
-        nomeAlunoExcluido = masterData[cls][idx].name;
+
+// =========================================================
+// FUNÇÃO: CONFIRMAR E EXECUTAR A EXCLUSÃO DO ALUNO
+// =========================================================
+window.confirmarExclusaoAluno = async function(cls, idx) {
+    // Remove o modal da tela imediatamente
+    const modal = document.getElementById('modalExcluirAluno');
+    if (modal) modal.remove();
+
+    if (!masterData[cls] || !masterData[cls][idx]) {
+        return alert('❌ Erro: Aluno não encontrado.');
     }
 
-    // Executa a lógica original do seu sistema
-    masterData[cls].splice(idx, 1); 
-    saveSystem(); 
-    renderOrganizerList(); 
+    const alunoRemovido = masterData[cls][idx].nome || masterData[cls][idx].name || "Aluno(a)";
 
-    // ==========================================
-    // O ESPIÃO REGISTRA A AÇÃO
-    // ==========================================
-    registrarLog("EXCLUSÃO DE ALUNO", `Removeu o(a) aluno(a) "${nomeAlunoExcluido}" da turma ${cls}.`);
-}
+    document.body.style.cursor = 'wait';
+
+    try {
+        // Remove o aluno da lista da turma
+        masterData[cls].splice(idx, 1);
+
+        // Salva localmente
+        saveSystem();
+
+        // Sincroniza com o Firebase
+        if (typeof db !== 'undefined') {
+            await db.collection("sistema").doc("masterData").set(masterData);
+        }
+
+        document.body.style.cursor = 'default';
+
+        // Registra no Espião (Logs)
+        try {
+            registrarLog("EXCLUSÃO DE ALUNO", `Removeu definitivamente o(a) aluno(a) "${alunoRemovido}" da turma ${cls}.`);
+        } catch(e) {
+            console.error("Erro no espião de exclusão de aluno:", e);
+        }
+
+        alert(`🗑️ O(A) aluno(a) ${alunoRemovido} foi excluído(a) com sucesso da turma ${cls}.`);
+
+        // Atualiza a listagem na tela
+        renderOrganizerList();
+
+    } catch (erro) {
+        document.body.style.cursor = 'default';
+        console.error("Erro ao excluir aluno no Firebase:", erro);
+        alert('❌ Erro de comunicação com o Firebase ao excluir o aluno: ' + (erro.message || 'Erro desconhecido'));
+    }
+};
 
 
 // --- NOVO SISTEMA DE RELATÓRIO BLINDADO ---
@@ -11451,8 +11946,27 @@ function renderReportAI() {
     const s = document.getElementById('config-screen'); 
     s.classList.add('active');
     s.innerHTML = `
-    <div class="container">
-        <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="container" style="max-width: 130%; width: 130%; margin: 0 auto; box-sizing: border-box;">
+        
+        <!-- BOTÃO VOLTAR FIXO (Ignora os 130% e fica colado na tela do navegador) -->
+        <button class="header-btn" onclick="renderHome()"
+                style="position: fixed; top: 20px; right: 30px; z-index: 9999;
+                       width: 130px; height:42px; padding: 0 15px; 
+                       background-color: #f5f5f5 !important; 
+                       color: #616161 !important; 
+                       border: 1px solid #e0e0e0 !important; 
+                       box-shadow: 0px 4px 0px #bdbdbd !important; 
+                       border-radius: 8px !important; 
+                       cursor: pointer; font-weight: bold; 
+                       display: flex; align-items: center; justify-content: center; gap: 8px; 
+                       transition: 0.1s;"
+                onmousedown="this.style.boxShadow='0px 2px 0px #bdbdbd'; this.style.transform='translateY(2px)'"
+                onmouseup="this.style.boxShadow='0px 4px 0px #bdbdbd'; this.style.transform='translateY(0)'"
+                onmouseleave="this.style.boxShadow='0px 4px 0px #bdbdbd'; this.style.transform='translateY(0)'">
+            <span style="font-size:16px;">⬅</span> Voltar
+        </button>
+
+        <div class="header" style="display: flex; justify-content: flex-start; align-items: center; width: 100%; box-sizing: border-box;">
             <div class="header-left">
                 <img src="LOGO GP.png" alt="Logo" class="logo-gp">
                 <div class="header-text">
@@ -11460,26 +11974,10 @@ function renderReportAI() {
                     <small>* Sistema de Apoio Pedagógico</small>
                 </div>
             </div>
-            
-            <button class="header-btn btn-back" onclick="renderHome()"
-                    style="width: 130px; height:42px; padding: 0 15px; 
-                           background-color: #f5f5f5 !important; 
-                           color: #616161 !important; 
-                           border: 1px solid #e0e0e0 !important; 
-                           box-shadow: 0px 4px 0px #bdbdbd !important; 
-                           border-radius: 8px !important; 
-                           cursor: pointer; font-weight: bold; 
-                           display: flex; align-items: center; justify-content: center; gap: 8px; 
-                           transition: 0.1s;"
-                    onmousedown="this.style.boxShadow='0px 2px 0px #bdbdbd'; this.style.transform='translateY(2px)'"
-                    onmouseup="this.style.boxShadow='0px 4px 0px #bdbdbd'; this.style.transform='translateY(0)'"
-                    onmouseleave="this.style.boxShadow='0px 4px 0px #bdbdbd'; this.style.transform='translateY(0)'">
-                <span style="font-size:16px;">⬅</span> Voltar
-            </button>
         </div>
 
-        <div class="grid-layout" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
-            <div class="card">
+        <div class="grid-layout" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; width: 100%; box-sizing: border-box;">
+            <div class="card" style="width: 100%; box-sizing: border-box;">
                 <h3>1. Configurações do Relatório</h3>
                 <div class="form-group">
                     <label>Ano Letivo</label>
@@ -11496,7 +11994,6 @@ function renderReportAI() {
                         <option value="">Selecione o Aluno</option>
                     </select>
                 </div>
-
 <div class="form-group">
                     <label>Professor(a) ou Professores(as)</label>
                     <input type="text" id="rep-prof" placeholder="Digite o nome do professor(a)..." class="input-admin">  
@@ -11565,77 +12062,74 @@ function renderReportAI() {
           <h3>2. Mural de Observações (Professores)</h3>
 
           <div style="display:flex; justify-content: flex-start; margin-bottom: 15px;">
-              <button class="main-button" onclick="resgatarHistoricoOutrosBimestres()"
-                      style="width: 50%; height: 45px; background-color: #eceff1 !important; color: #455a64 !important; border: 1px solid #cfd8dc !important; box-shadow: 0px 4px 0px #b0bec5 !important; border-radius: 8px !important; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.1s;"
-                      onmousedown="this.style.boxShadow='0px 2px 0px #b0bec5'; this.style.transform='translateY(2px)'"
-                      onmouseup="this.style.boxShadow='0px 4px 0px #b0bec5'; this.style.transform='translateY(0)'">
-                📂 HISTÓRICO DE NOTAS
-              </button>
+
           </div>
 
-          <p style="font-size:0.8em; color:#666; margin-bottom: 10px;">
-            Escreva frases, tags or observações que ajudarão a IA a criar o texto final.
+<p style="font-size:0.8em; color:#666; margin-bottom: 10px;">
+            Escreva frases, tags or observações que ajudarão a IA a criar o texto final.   
           </p>
 
-          <textarea id="rep-obs-texto" class="input-admin" rows="6"
+<textarea id="rep-obs-texto" class="input-admin" rows="6" style="width: 150%; box-sizing: border-box; resize: vertical;"
             placeholder="Ex: Aluno evoluiu na escrita, mas ainda tem dificuldade em divisão..."></textarea>
 
-          <div style="display:flex; gap:15px; margin-top:15px;">
-            <button class="main-button" onclick="salvarObservacaoFirebase()"
-                    style="flex:1; height:45px; background-color: #f1f8e9 !important; color: #558b2f !important; border: 1px solid #dcedc8 !important; box-shadow: 0px 4px 0px #c5e1a5 !important; border-radius: 8px !important; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.1s;"
-                    onmousedown="this.style.boxShadow='0px 2px 0px #c5e1a5'; this.style.transform='translateY(2px)'"
-                    onmouseup="this.style.boxShadow='0px 4px 0px #c5e1a5'; this.style.transform='translateY(0)'">
+          <div style="display:flex; gap:15px; margin-top:15px; width: 150%; box-sizing: border-box;">
+<button class="main-button" onclick="salvarObservacaoFirebase()"
+                    style="flex:1; height:45px; background-color: #fff1f0 !important; color: #000000 !important; border: 1px solid #ffccc7 !important; box-shadow: 0px 4px 0px #ffa39e !important; border-radius: 8px !important; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.1s; white-space: nowrap;"
+                    onmousedown="this.style.boxShadow='0px 2px 0px #ffa39e'; this.style.transform='translateY(2px)'"
+                    onmouseup="this.style.boxShadow='0px 4px 0px #ffa39e'; this.style.transform='translateY(0)'">
               📝 Registrar Observações
             </button>
 
             <button class="main-button" onclick="excluirObservacoesDoBimestreAtual()"
-                    style="flex:1; height:45px; background-color: #fff1f0 !important; color: #d32f2f !important; border: 1px solid #ffccc7 !important; box-shadow: 0px 4px 0px #ffa39e !important; border-radius: 8px !important; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.1s;"
+                    style="flex:1; height:45px; background-color: #fff1f0 !important; color: #000000 !important; border: 1px solid #ffccc7 !important; box-shadow: 0px 4px 0px #ffa39e !important; border-radius: 8px !important; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.1s; white-space: nowrap;"
                     onmousedown="this.style.boxShadow='0px 2px 0px #ffa39e'; this.style.transform='translateY(2px)'"
                     onmouseup="this.style.boxShadow='0px 4px 0px #ffa39e'; this.style.transform='translateY(0)'">
               🗑️ Excluir tudo
             </button>
           </div>
 
-          <div id="mural-lista"
-            style="margin-top:15px; max-height:200px; overflow-y:auto; border-top:1px solid #eee; padding-top:10px;">
-            <p style="font-size:0.9em; color:#999; text-align:center;">
-              Nenhuma observação registrada para este aluno.
-            </p>
-          </div>
+   <!-- Tirei a trava de 200px e a barra de rolagem. Agora ele empurra a tela para baixo! -->
+<div id="mural-lista" style="margin-top:15px; border-top:1px solid #eee; padding-top:10px; min-height: 100px;">
+          <p style="font-size:0.9em; color:#999; text-align:center;">
+            Nenhuma observação registrada para este aluno.
+          </p>
         </div>
+      </div>
 
-        <div class="card" style="text-align:center; background:#f6ffed; border:2px dashed #b7eb8f;">
-          <h3>3. Gerar Texto para o Relatório</h3>
+<div class="card" style="background:#f6ffed; border:2px dashed #b7eb8f; width: 144%; box-sizing: border-box; padding: 20px;">
+  <h3 style="text-align: center; margin-top: 0;">3. Gerar Texto para o Relatório</h3>
 
-          <button class="main-button" onclick="gerarPromptFinal()"
-                  style="width: 100%; height: 45px; background-color: #f9f0ff !important; color: #722ed1 !important; border: 1px solid #d3adf7 !important; box-shadow: 0px 4px 0px #b37feb !important; border-radius: 8px !important; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.1s;"
-                  onmousedown="this.style.boxShadow='0px 2px 0px #b37feb'; this.style.transform='translateY(2px)'"
-                  onmouseup="this.style.boxShadow='0px 4px 0px #b37feb'; this.style.transform='translateY(0)'">
-            🪄 MONTAR PROMPT DO RELATÓRIO
-          </button>
+  <div style="text-align: center;">
+    <button class="main-button" onclick="gerarPromptFinal()"
+            style="width: 100%; height: 45px; background-color: #f9f0ff !important; color: #722ed1 !important; border: 1px solid #d3adf7 !important; box-shadow: 0px 4px 0px #b37feb !important; border-radius: 8px !important; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: 0.1s; white-space: nowrap;"
+            onmousedown="this.style.boxShadow='0px 2px 0px #b37feb'; this.style.transform='translateY(2px)'"
+            onmouseup="this.style.boxShadow='0px 4px 0px #b37feb'; this.style.transform='translateY(0)'">
+      🪄 MONTAR PROMPT DO RELATÓRIO
+    </button>
+  </div>
 
-          <div id="display-prompt" style="display:none; margin-top:15px; text-align:left;">
-            <textarea id="texto-prompt-copia" class="input-admin" rows="6" readonly></textarea>
-            <button class="main-button" onclick="copyPrompt()" 
-                    style="width: 100%; height: 45px; margin-top: 10px; background-color: #e6f7ff !important; color: #1890ff !important; border: 1px solid #91d5ff !important; box-shadow: 0px 4px 0px #69c0ff !important; border-radius: 8px !important; font-weight: bold; cursor: pointer;">
-              📋 Copiar Prompt
-            </button>
-          </div>
-        </div>
+  <div id="display-prompt" style="display:none; margin-top:15px; text-align:left;">
+    <textarea id="texto-prompt-copia" class="input-admin" rows="6" style="width: 100%; resize: vertical;" readonly></textarea>
+    <button class="main-button" onclick="copyPrompt()" 
+            style="width: 100%; height: 45px; margin-top: 10px; background-color: #e6f7ff !important; color: #1890ff !important; border: 1px solid #91d5ff !important; box-shadow: 0px 4px 0px #69c0ff !important; border-radius: 8px !important; font-weight: bold; cursor: pointer; white-space: nowrap;">
+      📋 Copiar Prompt
+    </button>
+  </div>
+</div>
 
-        <div class="card">
-          <h3>4. Resultado Final (Cole o texto da IA aqui!)</h3>
+<div class="card" style="width: 150%; box-sizing: border-box;">
+        <h3>4. Resultado Final (Cole o texto da IA aqui!)</h3>
 
-          <textarea id="resultado-final-ia" class="input-admin" rows="10"
-            placeholder="Cole aqui o texto que a IA gerou para você..."></textarea>
+        <textarea id="resultado-final-ia" class="input-admin" rows="6" style="width: 98%; resize: vertical;"
+          placeholder="Cole aqui o texto que a IA gerou para você..."></textarea>
 
-          <button class="main-button" onclick="gerarRelatorioPDF()"
-                  style="width:100%; height: 45px; margin-top:15px; background-color: #e6fffb !important; color: #006d75 !important; border: 1px solid #87e8de !important; box-shadow: 0px 4px 0px #5cdbd3 !important; border-radius: 8px !important; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.1s;"
-                  onmousedown="this.style.boxShadow='0px 2px 0px #5cdbd3'; this.style.transform='translateY(2px)'"
-                  onmouseup="this.style.boxShadow='0px 4px 0px #5cdbd3'; this.style.transform='translateY(0)'">
-            📜 GERAR RELATÓRIO FINAL
-          </button>
-        </div>
+        <button class="main-button" onclick="gerarRelatorioPDF()"
+                style="width:98%; height: 45px; margin-top:15px; background-color: #e6fffb !important; color: #006d75 !important; border: 1px solid #87e8de !important; box-shadow: 0px 4px 0px #5cdbd3 !important; border-radius: 8px !important; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.1s; white-space: nowrap;"
+                onmousedown="this.style.boxShadow='0px 2px 0px #5cdbd3'; this.style.transform='translateY(2px)'"
+                onmouseup="this.style.boxShadow='0px 4px 0px #5cdbd3'; this.style.transform='translateY(0)'">
+          📜 GERAR RELATÓRIO FINAL
+        </button>
+      </div>
     </div>
     `;
 
@@ -11661,18 +12155,21 @@ function updateRepStudents() {
 function gerarPromptFinal() {
     const aluno = document.getElementById('rep-aluno').value;
     
-    // --- NOVO: CAPTURA DE MÚLTIPLAS MATÉRIAS ---
+    // --- CAPTURA E FORMATAÇÃO DAS MATÉRIAS ---
     const checks = document.querySelectorAll('.chk-materia:checked');
-    const materia = Array.from(checks).map(c => c.value).join(', ') || 'Nenhuma matéria selecionada';
+    let materia = Array.from(checks).map(c => c.value).join(', ') || 'Nenhuma matéria selecionada';
+    
+    // Deixa apenas a primeira letra maiúscula (Ex: "Português, Inglês")
+    let materiaFormatada = materia.toLowerCase().replace(/(?:^|[\s,])\S/g, function(a) { return a.toUpperCase(); });
     // ------------------------------------------
 
     const tamanho = document.getElementById('rep-tamanho').value;
     const bimestre = document.getElementById('rep-bimestre').value;
     const ano = document.getElementById('rep-ano').value;
     
-    // TRATAMENTO DO TIPO: Pega só a primeira palavra (ex: tira o "Abrange todos os aspectos")
+    // TRATAMENTO DO TIPO: Pega só a primeira palavra
     const tipoCompleto = document.getElementById('rep-tipo').value;
-    const tipoLimpo = tipoCompleto.split(" ")[0]; // Fica só "Geral" ou "Pedagógico"
+    const tipoLimpo = tipoCompleto.split(" ")[0]; 
     
     // Pega a data de hoje para mandar a IA assinar
     const dataHoje = new Date().toLocaleDateString('pt-BR');
@@ -11686,7 +12183,7 @@ function gerarPromptFinal() {
     }
 
     const prompt = `Aja como um professor altamente qualificado do Colégio GP. 
-Escreva um Relatório ${tipoLimpo} de tamanho ${tamanho} para o aluno(a) ${aluno}, referente à disciplina de ${materia} no ${bimestre} de ${ano}. 
+Escreva um Relatório ${tipoLimpo} de tamanho ${tamanho} para o aluno(a) ${aluno}, referente à disciplina de ${materiaFormatada} no ${bimestre} de ${ano}. 
 Use como base as seguintes observações: "${mural}". 
 O texto deve ser profissional e construtivo.
 
@@ -11695,7 +12192,7 @@ REGRA MILITAR DE FORMATAÇÃO (OBRIGATÓRIO):
 2. A primeira linha da sua resposta deve ser exatamente assim (em letras maiúsculas):
 RELATÓRIO ${tipoLimpo.toUpperCase()} - ${bimestre.toUpperCase()} DE ${ano}
 3. A segunda linha (sem pular linha):
-Disciplina: ${materia}
+Disciplina: ${materiaFormatada}
 4. A terceira linha (sem pular linha):
 Instituição: Colégio GP
 5. Pule UMA linha em branco e comece os parágrafos do relatório (Não escreva o nome do aluno aqui).
@@ -11709,14 +12206,12 @@ Emitido em ${dataHoje}`;
     document.getElementById('texto-prompt-copia').value = prompt;
 }
 
-
 function copyPrompt() {
     const copyText = document.getElementById('texto-prompt-copia');
     copyText.select();
     document.execCommand("copy");
     alert("Prompt copiado! Agora cole no ChatGPT ou Gemini e traga o resultado de volta.");
 }
-
 
 
 // 2. Faz os nomes dos alunos aparecerem na caixinha
@@ -11860,54 +12355,7 @@ function exibirFolhaRelatorio(aluno, turma, texto) {
     modal.style.display = 'block';
 }
 
-
-function resgatarHistoricoOutrosBimestres() {
-    const aluno = document.getElementById('rep-aluno').value;
-    const bimestreAtual = document.getElementById('rep-bimestre').value;
-
-    if (!aluno) return alert("⚠️ Selecione um aluno primeiro!");
-
-    // Vamos buscar no Firebase todas as notas desse aluno que NÃO sejam do bimestre que está na tela
-    db.collection("observacoes")
-      .where("aluno", "==", aluno)
-      .get()
-      .then((resultado) => {
-          let historicoHTML = `<h3 style="color:#007BFF; font-family:sans-serif;">Histórico de Observações: ${aluno}</h3>`;
-          let encontrouAlgo = false;
-
-          resultado.forEach((doc) => {
-              const info = doc.data();
-              // Só mostramos se for de um bimestre DIFERENTE do atual
-              if (info.bimestre !== bimestreAtual) {
-                  encontrouAlgo = true;
-                  const dataBot = info.data.toDate().toLocaleDateString('pt-BR');
-                  historicoHTML += `
-                    <div style="border:1px solid #ddd; padding:10px; margin-bottom:10px; border-radius:5px; background:#f9f9f9;">
-                        <small><strong>${info.bimestre}</strong> - Prof: ${info.professor} (${dataBot})</small><br>
-                        <p style="margin:5px 0; font-size:0.9em;">${info.texto}</p>
-                    </div>`;
-              }
-          });
-
-          if (!encontrouAlgo) {
-              alert("Não foram encontradas observações em outros bimestres para este aluno.");
-              return;
-          }
-
-          // Abrimos uma janelinha simples com o histórico para o professor copiar
-          const winHistorico = window.open('', '_blank', 'width=500,height=600');
-          winHistorico.document.write(`
-            <html>
-                <body style="font-family:sans-serif; padding:20px;">
-                    ${historicoHTML}
-                    <button onclick="window.close()" style="margin-top:20px; padding:10px; background:#007BFF; color:white; border:none; border-radius:5px; cursor:pointer;">✖ FECHAR JANELA</button>
-                </body>
-            </html>
-          `);
-      });
-}
-
-// ======================================================
+// ======================================================  
 // 🚀 VERSÃO 7.0 - DIÁRIO COM SALVAMENTO REFORÇADO
 // ======================================================
 
@@ -11923,21 +12371,34 @@ const linksDriveLocal = {
     "5º ANO A": "https://drive.google.com/drive/u/2/folders/1ZVjLPthQAI1cuDZIbKCaVQOqLKWFgZqy"
 };
 
-// 2. FUNÇÃO CARREGAR
+// =========================================================
+// 2. FUNÇÃO CARREGAR (AGORA EM TEMPO REAL ☁️)
+// =========================================================
 window.carregarDiarioSalvo = function() {
     const turma = currentClassContext;
     if (!turma) return;
-    // console.log("Sincronizando diário com o banco...");
 
-    db.collection('classes').doc(turma).get().then((doc) => {
+    // Trocamos o .get() pelo .onSnapshot()! 
+    // Agora ele fica "escutando" a turma o tempo todo.
+    db.collection('classes').doc(turma).onSnapshot((doc) => {
         if (doc.exists && doc.data().diarioConteudo) {
             window.memoriaDiario = doc.data().diarioConteudo;
-            console.log("Dados carregados:", window.memoriaDiario.length);
+            console.log("☁️ Diário da turma atualizado em tempo real! Registros:", window.memoriaDiario.length);
         } else {
             window.memoriaDiario = [];
         }
-    }).catch(err => console.error("Erro ao carregar:", err));
+        
+        // Se a tela com a lista de conteúdos estiver aberta, ele já desenha os novos textos na mesma hora!
+        if (document.getElementById("gestao-conteudo") && document.getElementById("gestao-conteudo").innerHTML.trim() !== "") {
+            if (typeof window.renderGestaoConteudo === 'function') {
+                window.renderGestaoConteudo();
+            }
+        }
+    }, (err) => {
+        console.error("❌ Erro ao escutar o diário na nuvem:", err);
+    });
 };
+
 
 // ==========================================
 // CALENDÁRIO INTELIGENTE DE BIMESTRES (2026)
@@ -11958,7 +12419,6 @@ function descobrirBimestre(dataString) {
     }
     return "PERÍODO EXTRA / RECESSO"; 
 }
-
 
 
 // 3. FUNÇÃO PRÓXIMA DATA (VERSÃO 11.0 - MULTI-ALERTAS INTELIGENTE COM ESPIÃO)
@@ -12014,7 +12474,7 @@ window.acaoProximaData = function() {
         if (dataValor < regraBimestre.start || dataValor > regraBimestre.end) {
             const inicioBR = regraBimestre.start.split('-').reverse().join('/');
             const fimBR = regraBimestre.end.split('-').reverse().join('/');
-            listaDeErros.push(`📅 BIMESTRE: A data ${dataFormatada} está fora do ${bimestreNomeExibicao} (Período: ${inicioBR} a ${fimBR}).`);
+            listaDeErros.push(`📅 BIMESTRE: A data ${dataFormatada} está FORA do ${bimestreNomeExibicao} (Período: ${inicioBR} a ${fimBR}).`);
         }
     }
 
@@ -12064,7 +12524,6 @@ window.acaoProximaData = function() {
         .catch(err => alert("Erro ao salvar: " + err));
     }
 };
-
 
 // 4. FUNÇÃO VISUALIZAR (ORIGINAL - COM DIVISÃO AUTOMÁTICA DE BIMESTRES)
 window.acaoVisualizarDiario = function () {
@@ -12247,7 +12706,7 @@ window.puxarDoSemanarioParaDiario = function() {
 
     if (registroSemanario && registroSemanario.conteudo) {
         txtArea.value = registroSemanario.conteudo;
-        alert("🪄 Mágica feita! Conteúdo de " + materiaKey.toUpperCase() + " carregado.");
+        alert("🪄 AÇÃO CONC! Conteúdo de " + materiaKey.toUpperCase() + " carregado.");
     } else {
         // console.log("Tentou buscar por:", materiaKey, "na data", dataKey);
         alert("ℹ️ Não há planejamento salvo para o dia " + dataKey.split('-').reverse().join('/') + " na matéria: " + materiaKey.toUpperCase() + ".");
@@ -12255,50 +12714,41 @@ window.puxarDoSemanarioParaDiario = function() {
 };
 
 
-function printGradeReport() {
-  if (!config || !config.grade) return alert("Nenhuma grade encontrada.");
+window.printGradeReport = function() {
+    if (!config || !config.grade) return alert("Nenhuma grade encontrada.");
 
-  const isAuthorizedForExtras =
-    currentUser && ["Coordenadora", "Diretora"].some(r => (currentUser.role || "").includes(r)) ||
-    (currentUser && (currentUser.displayName || "").includes("Júnior"));
+    // GRADE COMPLETA LIVRE PARA TODOS VISUALIZAREM E IMPRIMIREM
+    const list = config.grade;
 
-  const myFixedClass =
-    (currentUser && currentUser.classes && currentUser.classes.length > 0) ? currentUser.classes[0] : null;
+    if (!list.length) return alert("Nenhuma aula cadastrada para imprimir.");
 
-  const list = isAuthorizedForExtras
-    ? config.grade
-    : config.grade.filter(g => g.profEmail === currentUser.email && (!myFixedClass || g.turma === myFixedClass));
+    // Ordenação inteligente à prova de erros de digitação (Tera / Terça)
+    list.sort((a, b) => {
+        const ordemDias = { "Segunda": 1, "Terça": 2, "Tera": 2, "Quarta": 3, "Quinta": 4, "Sexta": 5 };
+        
+        const posA = ordemDias[a.dia] || 99;
+        const posB = ordemDias[b.dia] || 99;
+        
+        return (posA - posB) || a.hora.localeCompare(b.hora);
+    });
 
-  if (!list.length) return alert("Nenhuma aula cadastrada para imprimir.");
-
-// Ordenação inteligente à prova de erros de digitação (Tera / Terça)
-  list.sort((a, b) => {
-      const ordemDias = { "Segunda": 1, "Terça": 2, "Tera": 2, "Quarta": 3, "Quinta": 4, "Sexta": 5 };
-      
-      // Se a palavra existir, pega o peso numérico dela. Se não existir (ex: erro de digitação), joga pro final (peso 99).
-      const posA = ordemDias[a.dia] || 99;
-      const posB = ordemDias[b.dia] || 99;
-      
-      return (posA - posB) || a.hora.localeCompare(b.hora);
-  });
-
-const rows = list.map((g) => {
-    const realIndex = config.grade.findIndex(item => item === g);
-    return `
-    <tr>
-      <td id="edit-dia-${realIndex}" style="font-weight:bold; color:#444;">${g.dia}</td>
-      
-      <td><input type="time" id="edit-hora-${realIndex}" value="${g.hora}" style="width:100%; border:none; background:transparent; font-family:inherit; font-size:inherit; outline:none;"></td>
-      <td><input type="text" id="edit-turma-${realIndex}" value="${g.turma}" style="width:100%; border:none; background:transparent; font-family:inherit; font-size:inherit; outline:none;"></td>
-      <td><input type="text" id="edit-materia-${realIndex}" value="${g.materia}" style="width:100%; border:none; background:transparent; font-family:inherit; font-size:inherit; outline:none;"></td>
-      <td><input type="text" id="edit-prof-${realIndex}" value="${g.prof || ""}" style="width:100%; border:none; background:transparent; font-family:inherit; font-size:inherit; outline:none;"></td>
-      
-      <td class="no-print" style="text-align:center; display:flex; gap:5px; justify-content:center;">
-        <button onclick="salvarAula(${realIndex})" style="background:#90ee90; color:#006400; border:1px solid #3cb371; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:12px;" title="Salvar">💾</button>
-        <button onclick="excluirAula(${realIndex})" style="background:#fa8072; color:#fff; border:1px solid #e9967a; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:12px;" title="Excluir">🗑️</button>
-      </td>
-    </tr>
-  `}).join("");
+    const rows = list.map((g) => {
+        const realIndex = config.grade.findIndex(item => item === g);
+        return `
+        <tr>
+          <td id="edit-dia-${realIndex}" style="font-weight:bold; color:#444; text-align:center;">${g.dia}</td>
+          <td><input type="time" id="edit-hora-${realIndex}" value="${g.hora}" style="width:100%; border:none; background:transparent; font-family:inherit; font-size:inherit; outline:none;"></td>
+          <td><input type="text" id="edit-turma-${realIndex}" value="${g.turma}" style="width:100%; border:none; background:transparent; font-family:inherit; font-size:inherit; outline:none;"></td>
+          <td><input type="text" id="edit-materia-${realIndex}" value="${g.materia}" style="width:100%; border:none; background:transparent; font-family:inherit; font-size:inherit; outline:none;"></td>
+          <td><input type="text" id="edit-prof-${realIndex}" value="${g.prof || ""}" style="width:100%; border:none; background:transparent; font-family:inherit; font-size:inherit; outline:none;"></td>
+          
+          <td class="no-print" style="text-align:center; display:flex; gap:5px; justify-content:center;">
+            <button onclick="salvarAula(${realIndex})" style="background:#90ee90; color:#006400; border:1px solid #3cb371; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:12px;" title="Salvar">💾</button>
+            <button onclick="excluirAula(${realIndex})" style="background:#fa8072; color:#fff; border:1px solid #e9967a; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:12px;" title="Excluir">🗑️</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
 
   const logoUrl = "LOGO GP.png"; 
 
@@ -12310,14 +12760,14 @@ const rows = list.map((g) => {
       config.grade[index].prof = prof;
       
       saveSystem(); // Comando que salva de verdade no seu sistema
-      alert("✅ Aula atualizada e SALVA DEFINITIVAMENTE no banco de dados!");
+      //alert("✅ Aula atualizada e SALVA DEFINITIVAMENTE no banco de dados!");
   };
 
   window.excluirAulaDefinitivo = function(index) {
       config.grade.splice(index, 1);
       
       saveSystem(); // Comando que salva de verdade no seu sistema
-      alert("🗑️ Aula eliminada DEFINITIVAMENTE!");
+      //alert("🗑️ Aula eliminada DEFINITIVAMENTE!");
   };
   // =======================================================================
 
@@ -12340,7 +12790,7 @@ const rows = list.map((g) => {
           @media print {
             body { padding: 40px; } 
             .no-print { display:none !important; } 
-            select, input { border:none !important; background:transparent !important; color:#000 !important; appearance:none; -webkit-appearance:none; }
+            select, input { border:none !important; background:transparent !important; color:#000 !important; appearance:none; -webkit-appearance:none; } 
           }
         </style>
       </head>
@@ -12390,6 +12840,8 @@ const rows = list.map((g) => {
         </table>
 
         <script>
+
+
           function filtrarTabela() {
             var filtroDia = document.getElementById('f-dia').value.toLowerCase();
             var filtroTurma = document.getElementById('f-turma').value.toLowerCase();
@@ -12412,13 +12864,14 @@ const rows = list.map((g) => {
               if (exibeDia && exibeTurma && exibeMat && exibeProf) {
                 linha.style.display = '';
               } else {
-                linha.style.display = 'none';
+                linha.style.display = 'none';           
               }
             });
           }
 
+
           function salvarAula(index) {
-              if(confirm("Pretende guardar a edição desta aula?")) {
+              if(confirm("⚠️ ATENÇÃO: qualquer mudança é apenas para Impressão e NÃO afeta a Grade Geral! ⚠️")) {
                   // Pega os dados dos campinhos na janela atual
                   var dia = document.getElementById('edit-dia-' + index).textContent.trim();
                   var hora = document.getElementById('edit-hora-' + index).value;
@@ -12432,7 +12885,7 @@ const rows = list.map((g) => {
           }
 
           function excluirAula(index) {
-              if(confirm("⚠️ Tem certeza que deseja ELIMINAR esta aula da grade geral?")) {
+              if(confirm("⚠️ ATENÇÃO: qualquer mudança é apenas para Impressão e NÃO afeta a Grade Geral! ⚠️")) {
                   // MANDA PELA PONTE PARA A TELA PRINCIPAL EXCLUIR!
                   window.opener.excluirAulaDefinitivo(index);
                   event.target.closest('tr').style.display = 'none'; 
@@ -12452,69 +12905,10 @@ const rows = list.map((g) => {
 <script>
 
 
-window.addSlideUrl = function() {
-    const input = document.getElementById('new-slide-url');
-    
-    // TRUQUE: Se a lista estiver vazia visualmente, tenta renderizar antes de adicionar
-    const container = document.getElementById('lista-imagens-atuais');
-    if (container && container.innerHTML === "") {
-        if(typeof renderSlideList === 'function') renderSlideList();
-    }
-
-    const url = input.value.trim();
-    if (!url) return alert("⚠️ Por favor, cole uma URL válida!");
-    
-    if (!config.slideshow.images) config.slideshow.images = [];
-    config.slideshow.images.unshift(url);
-
-    // ==========================================
-    // 1. SALVAMENTO PROTEGIDO NO SISTEMA
-    // ==========================================
-    try {
-        saveSystem();
-    } catch(e) {
-        console.error("Erro ao adicionar imagem:", e);
-        // Desfaz a adição local caso o Firebase falhe
-        config.slideshow.images.shift();
-        return alert('❌ Erro ao salvar a nova foto no sistema: ' + (e.message || 'Erro desconhecido'));
-    }
-
-    const totalFotos = config.slideshow.images.length;
-    // Se a URL for gigantesca, corta para não deformar o alerta e o log
-    const urlCurta = url.length > 40 ? url.substring(0, 37) + '...' : url;
-
-    // ==========================================
-    // 2. O ESPIÃO REGISTRA A AÇÃO
-    // ==========================================
-    try {
-        registrarLog("GALERIA DE FOTOS", `Adicionou uma nova imagem. Total de fotos agora: ${totalFotos}. (URL: ${urlCurta})`);
-    } catch(e) { console.error("Erro no espião da galeria:", e); }
-    
-    // ==========================================
-    // 3. ALERTA DETALHADO E ESTILIZADO EM LISTA
-    // ==========================================
-    alert(`✅ Imagem adicionada com sucesso!\n\nAção: Nova Foto na Galeria\nTotal Atual: ${totalFotos} foto(s) cadastradas\nURL: ${urlCurta}`);
-    
-    input.value = ""; 
-    if(typeof renderSlideList === 'function') renderSlideList(); // Atualiza a lista visual
-
-    // ==========================================
-    // 4. MÁGICA CERTEIRA PARA MANTER A ABA ABERTA
-    // ==========================================
-    setTimeout(() => {
-        if (input) {
-            const abaConteudo = input.closest('.config-toggle-content') || input.closest('div[id*="content"]');
-            if (abaConteudo) {
-                abaConteudo.style.display = 'block';
-                abaConteudo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-    }, 300);
-};
-
-
+// ==========================================
 // 2. Função auxiliar para mostrar o que já tem
-function renderSlideList() {
+// ==========================================
+window.renderSlideList = function() {
     const container = document.getElementById('lista-imagens-atuais');
     // Se o elemento não existir na tela (modal fechado), para a execução
     if(!container) return; 
@@ -12522,124 +12916,127 @@ function renderSlideList() {
     if(!config.slideshow.images) config.slideshow.images = [];
     
     container.innerHTML = config.slideshow.images.map((img, index) => 
-        `<div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding:2px;">
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:80%; font-size:12px;">${index+1}. ${img}</span>
-            <span style="cursor:pointer; color:red; font-weight:bold;" onclick="removeSlide(${index})">✖</span>
-         </div>`
+        `
+            ${index+1}. ${img}
+            ✖
+         `
     ).join('');
-}
-
-window.removeSlide = function(index) {
-    // Pega a URL da imagem ANTES de apagar para o log e para o alerta
-    const urlRemovida = config.slideshow.images[index];
-    if (!urlRemovida) return; // Trava de segurança caso o índice seja inválido
-
-    if(!confirm("🗑️ Deseja realmente remover esta imagem da galeria?")) return;
-
-    // Remove a imagem da lista localmente
-    config.slideshow.images.splice(index, 1);
-
-    // ==========================================
-    // 1. SALVAMENTO PROTEGIDO NO SISTEMA
-    // ==========================================
-    try {
-        saveSystem();
-    } catch(e) {
-        console.error("Erro ao remover imagem:", e);
-        // Desfaz a exclusão local (colocando a foto de volta no mesmo lugar) caso o Firebase falhe
-        config.slideshow.images.splice(index, 0, urlRemovida);
-        return alert('❌ Erro ao salvar a exclusão da foto no sistema: ' + (e.message || 'Erro desconhecido'));
-    }
-
-    const totalRestante = config.slideshow.images.length;
-    // Encurta a URL para o alerta e log não ficarem deformados
-    const urlCurta = urlRemovida.length > 40 ? urlRemovida.substring(0, 37) + '...' : urlRemovida;
-
-    // ==========================================
-    // 2. O ESPIÃO REGISTRA A AÇÃO
-    // ==========================================
-    try {
-        registrarLog("GALERIA DE FOTOS", `Removeu uma imagem da galeria. Total restante: ${totalRestante}. (URL removida: ${urlCurta})`);
-    } catch(e) { console.error("Erro no espião da galeria:", e); }
-
-    // ==========================================
-    // 3. ALERTA DETALHADO E ESTILIZADO EM LISTA
-    // ==========================================
-    alert(`✅ Imagem removida com sucesso!\n\nAção: Exclusão de Foto\nTotal Restante: ${totalRestante} foto(s)\nURL apagada: ${urlCurta}`);
-
-    // Atualiza a lista na tela
-    if(typeof renderSlideList === 'function') renderSlideList();
-
-    // ==========================================
-    // 4. MÁGICA CERTEIRA PARA MANTER A ABA ABERTA
-    // ==========================================
-    setTimeout(() => {
-        // Usa a lista de slides como âncora
-        const el = document.getElementById('lista-imagens-atuais') || document.getElementById('slide-list');
-        if (el) {
-            const abaConteudo = el.closest('.config-toggle-content') || el.closest('div[id*="content"]');
-            if (abaConteudo) {
-                abaConteudo.style.display = 'block';
-                abaConteudo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-    }, 300);
 };
 
 
+// ==========================================
+// 🛡️ ESTRATÉGIA ATÔMICA: GALERIA DE DESTAQUES (COM ALERTAS DETALHADOS)
+// ==========================================
 
-window.clearSlides = function() {
-    // Conta quantas fotos existem antes de apagar
-    const totalFotos = config.slideshow && config.slideshow.images ? config.slideshow.images.length : 0;
+// 1. ADICIONAR FOTO
+window.addSlideUrl = function() {
+    const input = document.getElementById('new-slide-url');
+    const url = input.value.trim();
+    if (!url) return alert("⚠️ Por favor, cole uma URL válida!");
+    
+    if (!config.slideshow.images) config.slideshow.images = [];
+    config.slideshow.images.unshift(url);
 
-    if (totalFotos === 0) {
-        return alert("⚠️ A galeria já está vazia!");
+    try { saveSystem(); } catch(e) {
+        config.slideshow.images.shift();
+        return alert('❌ Erro local ao salvar: ' + e.message);
     }
 
-    if (!confirm(`🗑️ Atenção: Deseja realmente APAGAR TODAS as ${totalFotos} fotos da galeria?`)) return;
+    input.value = ""; 
+    if(typeof renderSlideList === 'function') renderSlideList(); 
 
-    // Limpa a lista de imagens
-    config.slideshow.images = [];
-
-    // ==========================================
-    // 1. SALVAMENTO PROTEGIDO NO SISTEMA
-    // ==========================================
-    try {
-        saveSystem();
-    } catch(e) {
-        console.error("Erro ao limpar a galeria:", e);
-        return alert('❌ Erro ao salvar a exclusão das fotos no sistema: ' + (e.message || 'Erro desconhecido'));
+    if (typeof db !== 'undefined') {
+        db.collection('escola').doc('configuracoesGerais').set({
+            configGlobal: config
+        })
+        .then(() => console.log("☁️ Galeria salva com sucesso na nuvem!"))
+        .catch(err => console.error("❌ Erro na nuvem:", err));
     }
 
-    // ==========================================
-    // 2. O ESPIÃO REGISTRA A AÇÃO
-    // ==========================================
-    try {
-        registrarLog("GALERIA DE FOTOS", `Apagou a galeria inteira (${totalFotos} imagem/imagens removida(s)).`);
-    } catch(e) { console.error("Erro no espião da galeria:", e); }
+    const totalFotos = config.slideshow.images.length;
+    const urlCurta = url.length > 40 ? url.substring(0, 37) + '...' : url;
 
-    // ==========================================
-    // 3. ALERTA DETALHADO E ESTILIZADO EM LISTA
-    // ==========================================
-    alert(`✅ Galeria limpa com sucesso!\n\nAção: Limpeza Total\nFotos Apagadas: ${totalFotos}\nStatus Atual: Nenhuma foto em exibição`);
+    try { registrarLog("GALERIA DE FOTOS", `Adicionou uma nova imagem. Total de fotos agora: ${totalFotos}. (URL: ${urlCurta})`); } catch(e) {}
+    
+    setTimeout(() => { 
+        alert(`✅ Imagem adicionada com sucesso!\n\nAção: Nova Foto na Galeria\nTotal Atual: ${totalFotos} foto(s) cadastradas\nURL: ${urlCurta}`); 
+    }, 100);
+};
 
-    // Atualiza a lista na tela para sumir com as fotos antigas
+// 2. APAGA FOTO INDIVIDUAL (O botão "✖")
+window.removeSlide = function(index) {
+    if (!confirm("🗑️ Deseja realmente remover esta foto da galeria?")) return;
+    
+    config.slideshow.images.splice(index, 1);
+    
+    try { saveSystem(); } catch(e) {}
+
     if(typeof renderSlideList === 'function') renderSlideList();
 
-    // ==========================================
-    // 4. MÁGICA CERTEIRA PARA MANTER A ABA ABERTA
-    // ==========================================
-    setTimeout(() => {
-        // Usa a lista de slides ou o próprio botão como âncora
-        const el = document.getElementById('slide-list') || document.querySelector('[onclick="clearSlides()"]');
-        if (el) {
-            const abaConteudo = el.closest('.config-toggle-content') || el.closest('div[id*="content"]');
-            if (abaConteudo) {
-                abaConteudo.style.display = 'block';
-                abaConteudo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-    }, 300);
+    if (typeof db !== 'undefined') {
+        db.collection('escola').doc('configuracoesGerais').set({
+            configGlobal: config
+        })
+        .then(() => console.log("☁️ Foto removida e nuvem atualizada!"))
+        .catch(err => console.error("❌ Erro na nuvem:", err));
+    }
+    
+    try { registrarLog("GALERIA DE FOTOS", `Removeu uma foto da galeria individualmente.`); } catch(e) {}
+    
+    setTimeout(() => { 
+        alert(`✅ Foto removida com sucesso!\n\nAção: Exclusão Individual\nStatus Atual: ${config.slideshow.images.length} foto(s) restante(s) na galeria`); 
+    }, 100);
+};
+
+// 3. LIMPA A GALERIA INTEIRA
+window.clearSlides = function() {
+    const totalFotos = config.slideshow && config.slideshow.images ? config.slideshow.images.length : 0;
+    if (totalFotos === 0) return alert("⚠️ A galeria já está vazia!");
+    if (!confirm(`🗑️ Atenção: Deseja realmente APAGAR TODAS as ${totalFotos} fotos da galeria?`)) return;
+
+    config.slideshow.images = [];
+    try { saveSystem(); } catch(e) {}
+
+    if(typeof renderSlideList === 'function') renderSlideList();
+
+    if (typeof db !== 'undefined') {
+        db.collection('escola').doc('configuracoesGerais').set({
+            configGlobal: config
+        })
+        .then(() => console.log("☁️ Galeria limpa na nuvem!"))
+        .catch(err => console.error("❌ Erro na nuvem:", err));
+    }
+
+    try { registrarLog("GALERIA DE FOTOS", `Apagou a galeria inteira (${totalFotos} imagem(ns) removida(s)).`); } catch(e) {}
+
+    setTimeout(() => { 
+        alert(`✅ Galeria limpa com sucesso!\n\nAção: Limpeza Total\nFotos Apagadas: ${totalFotos}\nStatus Atual: Nenhuma foto em exibição`); 
+    }, 100);
+};
+
+// 4. SALVA AS CONFIGURAÇÕES (Velocidade e Status)
+window.saveSlideshowConfig = function() {
+    const speed = document.getElementById('cfg-slide-speed').value;
+    const active = document.getElementById('cfg-slide-active').value === 'true';
+
+    config.slideshow.speed = parseInt(speed, 10) || 3000;
+    config.slideshow.active = active;
+
+    try { saveSystem(); } catch(e) {}
+
+    if (typeof db !== 'undefined') {
+        db.collection('escola').doc('configuracoesGerais').set({
+            configGlobal: config
+        })
+        .then(() => console.log("☁️ Configurações da galeria salvas na nuvem!"))
+        .catch(err => console.error("❌ Erro na nuvem:", err));
+    }
+
+    try { registrarLog("GALERIA DE FOTOS", `Atualizou as configurações (Velocidade: ${speed}ms | Status: ${active ? 'Ativado' : 'Desativado'}).`); } catch(e) {}
+    
+    setTimeout(() => { 
+        alert(`✅ Configurações da galeria atualizadas!\n\nVelocidade: ${speed}ms\nExibição na Home: ${active ? 'ATIVADA 🟢' : 'DESATIVADA 🔴'}`); 
+    }, 100);
 };
 
 
@@ -12866,6 +13263,7 @@ window.saveWeekly = function() {
     }
 };
 
+
 // 4. TABELA DE GESTÃO DO SEMANÁRIO (Agora com Filtro de Período!)
 
 // Variável global para guardar a escolha do filtro
@@ -12961,8 +13359,9 @@ window.renderGestaoSemanario = function() {
 };
 
 
-
-// Edição rápida pela tabela (Com Espião Integrado)
+// =========================================================
+// FUNÇÃO: EDIÇÃO RÁPIDA PELA TABELA (INSTANTÂNEA E COM NUVEM)
+// =========================================================
 window.editarSemanario = function(dataKey, materiaKey, conteudoAtual) {
     let dataBR = dataKey.split('-').reverse().join('/');
     
@@ -12975,16 +13374,26 @@ window.editarSemanario = function(dataKey, materiaKey, conteudoAtual) {
     if (novoTexto === null) return; 
 
     let contextoTurma = (typeof currentClassContext !== 'undefined') ? currentClassContext : null;
-    if(!contextoTurma) return;
+    if(!contextoTurma) {
+        return alert("⚠️ Erro: Nenhuma turma selecionada.");
+    }
 
-    let index = window.memoriaSemanario.findIndex(x => x.data === dataKey && x.materiaKey === materiaKey);
+    // Garante que a memória existe
+    if (!window.memoriaSemanario) window.memoriaSemanario = [];
+
+    // Busca exata do índice na memória
+    let index = window.memoriaSemanario.findIndex(x => String(x.data) === String(dataKey) && String(x.materiaKey).trim().toLowerCase() === String(materiaKey).trim().toLowerCase());
     
     // Identifica se a intenção foi apagar o registro
     let isExclusao = (novaDataBR.trim() === "" && novoTexto.trim() === "");
 
     if (isExclusao) {
         if (!confirm("⚠️ Você apagou a data e o conteúdo. Este registro será EXCLUÍDO. Confirma?")) return;
-        if (index >= 0) window.memoriaSemanario.splice(index, 1);
+        if (index >= 0) {
+            window.memoriaSemanario.splice(index, 1);
+        } else {
+            window.memoriaSemanario = window.memoriaSemanario.filter(x => !(String(x.data) === String(dataKey) && String(x.materiaKey).trim().toLowerCase() === String(materiaKey).trim().toLowerCase()));
+        }
     } else {
         // Lógica de Atualização da data
         let partesData = novaDataBR.split('/');
@@ -13001,30 +13410,52 @@ window.editarSemanario = function(dataKey, materiaKey, conteudoAtual) {
         }
     }
 
-    if (typeof db !== 'undefined') {
-        db.collection('classes').doc(contextoTurma).set({ semanarioConteudo: window.memoriaSemanario }, { merge: true })
-        .then(() => {
-            // ==========================================
-            // O ESPIÃO REGISTRA A EDIÇÃO OU EXCLUSÃO
-            // ==========================================
-            try {
-                let materiaNome = materiaKey.toUpperCase();
-                if (isExclusao) {
-                    registrarLog("EXCLUSÃO NO SEMANÁRIO", `Excluiu o planejamento de ${materiaNome} do dia ${dataBR} na turma ${contextoTurma}.`);
-                } else {
-                    let dataFinalLog = novaDataBR.trim() !== "" ? novaDataBR : dataBR;
-                    registrarLog("EDIÇÃO NO SEMANÁRIO", `Editou o planejamento de ${materiaNome} para a data ${dataFinalLog} na turma ${contextoTurma}.`);
-                }
-            } catch(e) { console.error("Erro no espião do editor de semanário:", e); }
+    // SINCRONIZA COM O MASTERDATA GLOBAL
+    if (typeof masterData !== 'undefined' && masterData[contextoTurma]) {
+        if(!masterData[contextoTurma][0]) masterData[contextoTurma][0] = {};
+        masterData[contextoTurma][0].semanarioConteudo = [...window.memoriaSemanario];
+    }
 
-            alert("✅ Registro editado com sucesso!");
-            window.renderWeekly(); // Atualiza a tela toda
-        }).catch(e => alert("Erro ao editar: " + e));
+    // =========================================================================
+    // ⚡ ATUALIZAÇÃO INSTANTÂNEA NA TELA (Sem precisar de F5 ou esperar nuvem)
+    // =========================================================================
+    if (typeof window.renderWeekly === 'function') {
+        window.renderWeekly();
+    }
+
+    // Alerta imediato para você ter certeza visual que a ação ocorreu
+    alert(isExclusao ? "🗑️ Registro excluído com sucesso!" : "✅ Registro editado com sucesso!");
+
+    // ==========================================
+    // O ESPIÃO REGISTRA A AÇÃO
+    // ==========================================
+    try {
+        let materiaNome = materiaKey.toUpperCase();
+        if (isExclusao) {
+            registrarLog("EXCLUSÃO NO SEMANÁRIO", `Excluiu o planejamento de ${materiaNome} do dia ${dataBR} na turma ${contextoTurma}.`);
+        } else {
+            let dataFinalLog = novaDataBR.trim() !== "" ? novaDataBR : dataBR;
+            registrarLog("EDIÇÃO NO SEMANÁRIO", `Editou o planejamento de ${materiaNome} para a data ${dataFinalLog} na turma ${contextoTurma}.`);
+        }
+    } catch(e) { 
+        console.error("Erro no espião do editor de semanário:", e); 
+    }
+
+    // =========================================================================
+    // ☁️ ENVIA PARA A NUVEM EM SEGUNDO PLANO (Não trava a tela)
+    // =========================================================================
+    if (typeof db !== 'undefined') {
+        db.collection('classes').doc(contextoTurma).set({ 
+            semanarioConteudo: window.memoriaSemanario 
+        }, { merge: true })
+        .then(() => {
+            console.log("☁️ Semanário salvo na nuvem com sucesso em segundo plano!");
+        })
+        .catch(e => {
+            console.error("Erro ao salvar semanário na nuvem:", e);
+        });
     }
 };
-
-
-
 
 // 1. Função que renderiza a tabela de gestão na tela principal			
 window.renderGestaoConteudo = function() {
@@ -13148,9 +13579,8 @@ window.abrirEditorConteudo = function(turma, dataIso, conteudoAtual) {
 };
 
 
-
 // =========================================================================
-// FUNÇÕES DE GESTÃO DE FERIADOS E EXCEÇÕES (PAINEL DE CONFIGURAÇÕES)
+// FUNÇÕES DE GESTÃO DE FERIADOS E EXCEÇÕES (PAINEL DE CONFIGURAÇÕES) - ☁️ COM NUVEM
 // =========================================================================
 
 window.adicionarNovaExcecao = function() {
@@ -13178,14 +13608,32 @@ window.adicionarNovaExcecao = function() {
     excecoes[chavePeriodo] = { label: motivoInput, blocked: true };
 
     // ==========================================
-    // 1. SALVAMENTO PROTEGIDO NO SISTEMA
+    // 1. SALVAMENTO PROTEGIDO NO SISTEMA LOCAL
     // ==========================================
     try {
         window.saveExceptionOverrides(excecoes);
+        // Garante que o config global receba a nova exceção para subir na nuvem
+        if (typeof config !== 'undefined') {
+            config.exceptionOverrides = excecoes;
+        }
     } catch(e) {
         console.error("Erro ao salvar exceção:", e);
         return alert('❌ Erro ao salvar o período no sistema: ' + (e.message || 'Erro desconhecido'));
     }
+
+    // ====================================================================
+    // ☁️ A MÁGICA DA NUVEM: SINCRONIZANDO NOVO FERIADO NO FIREBASE
+    // ====================================================================
+    if (typeof db !== 'undefined') {
+        db.collection('escola').doc('configuracoesGerais').set({
+            configGlobal: config
+        }, { merge: true })
+        .then(() => {
+            console.log("☁️ Nova exceção/feriado sincronizada na nuvem com sucesso!");
+        })
+        .catch(err => console.error("❌ Erro ao sincronizar nova exceção na nuvem:", err));
+    }
+    // ====================================================================
 
     // Função rápida para converter YYYY-MM-DD para DD/MM/YYYY no alerta e no log
     const formatarData = (dataStr) => dataStr.split('-').reverse().join('/');
@@ -13226,7 +13674,6 @@ window.adicionarNovaExcecao = function() {
         }
     }, 300);
 };
-
 
 window.renderListaExcecoes = function() {
     const container = document.getElementById('lista-excecoes-cadastradas');
@@ -13291,8 +13738,6 @@ window.renderListaExcecoes = function() {
 
     container.innerHTML = html;
 };
-
-
 
 window.imprimirExcecoes = function() {
     const excecoes = window.loadExceptionOverrides ? window.loadExceptionOverrides() : {};
@@ -13389,9 +13834,8 @@ window.imprimirExcecoes = function() {
 };
 
 
-
 // =========================================================================
-// FUNÇÕES COMPLEMENTARES DE AÇÃO (SALVAR EDIÇÃO E EXCLUIR)
+// FUNÇÕES COMPLEMENTARES DE AÇÃO (SALVAR EDIÇÃO E EXCLUIR) - ☁️ COM NUVEM CORRIGIDA
 // =========================================================================
 
 window.salvarEdicaoExcecao = function(chave) {
@@ -13418,14 +13862,32 @@ window.salvarEdicaoExcecao = function(chave) {
     excecoes[chave].label = novoMotivo;
 
     // ==========================================
-    // 1. SALVAMENTO PROTEGIDO NO SISTEMA
+    // 1. SALVAMENTO PROTEGIDO NO SISTEMA LOCAL
     // ==========================================
     try {
         window.saveExceptionOverrides(excecoes);
+        // Garante que o config global receba as exceções atualizadas para subir na nuvem
+        if (typeof config !== 'undefined') {
+            config.exceptionOverrides = excecoes;
+        }
     } catch(e) {
         console.error("Erro ao editar exceção:", e);
         return alert('❌ Erro ao salvar a edição no sistema: ' + (e.message || 'Erro desconhecido'));
     }
+
+    // ====================================================================
+    // ☁️ A MÁGICA DA NUVEM: SINCRONIZANDO EXCEÇÕES NO FIREBASE
+    // ====================================================================
+    if (typeof db !== 'undefined') {
+        db.collection('escola').doc('configuracoesGerais').set({
+            configGlobal: config
+        }, { merge: true })
+        .then(() => {
+            console.log("☁️ Exceções sincronizadas na nuvem com sucesso!");
+        })
+        .catch(err => console.error("❌ Erro ao sincronizar exceções na nuvem:", err));
+    }
+    // ====================================================================
 
     // ==========================================
     // 2. O ESPIÃO REGISTRA A EDIÇÃO DO FERIADO
@@ -13448,7 +13910,6 @@ window.salvarEdicaoExcecao = function(chave) {
     // 4. MÁGICA CERTEIRA PARA MANTER A ABA ABERTA
     // ==========================================
     setTimeout(() => {
-        // Tenta achar o elemento de edição ou usa o input principal de datas como âncora
         const el = document.getElementById(`edit-exc-${chave}`) || document.getElementById('nova-exc-data');
         if (el) {
             const abaConteudo = el.closest('.config-toggle-content') || el.closest('div[id*="content"]');
@@ -13461,7 +13922,7 @@ window.salvarEdicaoExcecao = function(chave) {
 };
 
 // =========================================================================
-// FUNÇÕES DE EXCLUSÃO DE FERIADOS E EXCEÇÕES
+// FUNÇÕES DE EXCLUSÃO DE FERIADOS E EXCEÇÕES - ☁️ COM EXCLUSÃO REAL NA NUVEM
 // =========================================================================
 
 window.excluirExcecao = function(chave) {
@@ -13489,21 +13950,43 @@ window.excluirExcecao = function(chave) {
     delete excecoes[chave];
 
     // ==========================================
-    // 1. SALVAMENTO PROTEGIDO NO SISTEMA
+    // 1. SALVAMENTO PROTEGIDO NO SISTEMA LOCAL
     // ==========================================
     try {
         window.saveExceptionOverrides(excecoes);
+        if (typeof config !== 'undefined') {
+            config.exceptionOverrides = excecoes;
+        }
     } catch(e) {
         console.error("Erro ao excluir exceção:", e);
         return alert('❌ Erro ao salvar a exclusão no sistema: ' + (e.message || 'Erro desconhecido'));
     }
+
+    // ====================================================================
+    // ☁️ A MÁGICA DA NUVEM: ATUALIZAÇÃO DIRETA PARA APAGAR NA NUVEM
+    // ====================================================================
+    if (typeof db !== 'undefined') {
+        db.collection('escola').doc('configuracoesGerais').update({
+            'configGlobal.exceptionOverrides': excecoes
+        })
+        .then(() => {
+            console.log("☁️ Exceção excluída e sincronizada na nuvem com sucesso!");
+        })
+        .catch(err => {
+            console.warn("⚠️ Tentando fallback com set para exclusão:", err);
+            db.collection('escola').doc('configuracoesGerais').set({
+                configGlobal: config
+            }, { merge: true });
+        });
+    }
+    // ====================================================================
 
     // ==========================================
     // 2. O ESPIÃO REGISTRA A EXCLUSÃO
     // ==========================================
     try {
         let detalhePeriodo = (dataInicio === dataFim) ? dataInFormatada : `de ${dataInFormatada} até ${dataFimFormatada}`;
-        registrarLog("EXCLUSÃO DE FERIADO/EXCELÇÃO", `Removeu do calendário: "${motivo}" (${detalhePeriodo}).`);
+        registrarLog("EXCLUSÃO DE FERIADO/EXCEÇÃO", `Removeu do calendário: "${motivo}" (${detalhePeriodo}).`);
     } catch(e) { console.error("Erro no espião de exclusão de exceções:", e); }
 
     // ==========================================
@@ -13517,7 +14000,6 @@ window.excluirExcecao = function(chave) {
     // 4. MÁGICA CERTEIRA PARA MANTER A ABA ABERTA
     // ==========================================
     setTimeout(() => {
-        // Usa o input de nova exceção como âncora para encontrar a aba de calendário
         const el = document.getElementById('nova-exc-data');
         if (el) {
             const abaConteudo = el.closest('.config-toggle-content') || el.closest('div[id*="content"]');
@@ -13528,7 +14010,6 @@ window.excluirExcecao = function(chave) {
         }
     }, 300);
 };
-
 
 </script>
 
