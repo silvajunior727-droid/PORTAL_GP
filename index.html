@@ -29,9 +29,9 @@
     firebase.initializeApp(firebaseConfig);  
     const db = firebase.firestore();
 
-    // =========================================================
+    // =======================================================
     // MATA-CACHE (SERVICE WORKER)
-    // =========================================================
+    // =======================================================
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
           for(let registration of registrations) {
