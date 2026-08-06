@@ -1710,7 +1710,7 @@ td input { text-align: center; }
 function getFaltas(aluno, materia) {
     if (!aluno || !aluno.diary) return 0;
     
-    // Nome do campo do boletim (ex: faltas_matematica)
+    // Nome do campo do boletim
     const nomeCampo = (materia === "ingles" ? "faltasingles" : (materia === "edfisica" ? "faltasedfisica" : "faltas_" + materia));
     let totalBoletim = 0;
 
@@ -1721,19 +1721,10 @@ function getFaltas(aluno, materia) {
         // Verifica se o registro é válido
         if (typeof entry === 'object' && entry !== null) {
             
-            // 1. O Boletim sempre deve ler o campo específico da matéria
-            // 2. MAS, se o campo "just" estiver preenchido, o aluno tem direito a zero faltas naquele dia (justificado)
-            let temJustificativa = entry.just && String(entry.just).trim() !== "" && entry.just !== "Aguarde..."; 
+            // Agora a falta é lida e somada independentemente de ter justificativa
+            let valorDoDia = (entry[nomeCampo] !== undefined) ? entry[nomeCampo] : (entry.faltas || 0);
+            totalBoletim += Number(valorDoDia);
             
-            if (temJustificativa) {
-                // Se tem justificativa, esse dia NÃO entra na conta do boletim (vale 0)
-                continue; 
-            } else {
-                // Se NÃO tem justificativa, lemos o valor gravado na matéria
-                // Se o campo da matéria não existir, lemos o valor geral de faltas
-                let valorDoDia = (entry[nomeCampo] !== undefined) ? entry[nomeCampo] : (entry.faltas || 0);
-                totalBoletim += Number(valorDoDia);
-            }
         }
     }
     return totalBoletim;
@@ -5022,12 +5013,13 @@ function generateAttendanceSheet() {
                         if(entry.faltas === 0) {
                             symbol = '<span style="color: #28a745; font-weight: bold;">P</span>';
                         } else {
-                            if(entry.just && entry.just.trim() !== "") {
-                                symbol = '<span style="color: #FF8C00; font-weight: bold;">FJ</span>';
-                            } else {
-                                symbol = '<span style="color: #dc3545; font-weight: bold;">F</span>';
-                                totalF++; 
-                            }
+if(entry.just && entry.just.trim() !== "") {
+                            symbol = '<span style="color: #FF8C00; font-weight: bold;">FJ</span>';
+                            totalF++; // <--- A MÁGICA AQUI: Agora a FJ também aumenta a conta total de faltas do diário!
+                        } else {
+                            symbol = '<span style="color: #dc3545; font-weight: bold;">F</span>';
+                            totalF++; 
+                        }
                         }
                     }
                     tableHtml += `<td>${symbol}</td>`;
@@ -8118,7 +8110,7 @@ function saveAttend() {
     }
 
     const faltaParaO_Diario = alunoPresente ? 0 : 1;
-    const faltaParaO_Boletim = (alunoPresente || justificativa !== "") ? 0 : 1;
+const faltaParaO_Boletim = alunoPresente ? 0 : 1;
     
     masterData[currentClassContext][idx].diary[d].just = justs[i].value;
 
@@ -10145,48 +10137,41 @@ document.addEventListener('change', function(e) {
 /* =================================================================================
    CORREÇÃO DEFINITIVA: ISOLAMENTO TOTAL DE TODAS AS MATÉRIAS NO BOLETIM
    ================================================================================= */
-function contarFaltasPorMateria(aluno, nomeMateria, turmaContext) {
-    if (!aluno || !aluno.diary) return 0; // Proteção extra contra o "undefined"
-
-    const mapaMaterias = {
-        'português': 'portugues', 'matemática': 'matematica', 'história': 'historia',
-        'geografia': 'geografia', 'ciências': 'ciencias', 'arte': 'arte',
-        'inglês': 'ingles', 'educação física': 'edfisica', 'ed. física': 'edfisica'
-    };
-
-    const materiaLower = nomeMateria.toLowerCase();
-    if (materiaLower === 'ensino religioso') return 0;
-
-    const chave = mapaMaterias[materiaLower] || materiaLower;
-    const nomeCampoBanco = (chave === 'ingles') ? 'faltasingles' : (chave === 'edfisica' ? 'faltasedfisica' : 'faltas_' + chave);
-    const todasAsChavesEspecificas = ['faltas_portugues', 'faltas_matematica', 'faltas_historia', 'faltas_geografia', 'faltas_ciencias', 'faltas_arte', 'faltasingles', 'faltasedfisica'];
-
+function contarFaltasPorMateria(aluno, materiaNome) {
+    if (!aluno || !aluno.diary) return 0;
+    
+    // 1. Padroniza o nome da matéria que vem do boletim (ex: "PORTUGUÊS") 
+    // para bater exatamente com a chave do banco de dados (ex: "portugues")
+    let matNormalizada = materiaNome.toLowerCase()
+                         .replace("ç", "c")
+                         .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    if (matNormalizada === "ed. fisica" || matNormalizada === "educacao fisica") {
+        matNormalizada = "edfisica";
+    }
+    
+    const nomeCampo = (matNormalizada === "ingles" ? "faltasingles" : (matNormalizada === "edfisica" ? "faltasedfisica" : "faltas_" + matNormalizada));
+    
     let totalFaltas = 0;
 
-    Object.values(aluno.diary).forEach(dia => {
-        // 🔒 "VACINA": Se este dia tem uma justificativa preenchida, IGNORA A FALTA E PULA PARA O PRÓXIMO DIA
-        let temJust = dia.just && String(dia.just).trim() !== "" && dia.just !== "Aguarde...";
-        if (temJust) return; 
-
-        // 1. PRIORIDADE MÁXIMA
-        if (dia[nomeCampoBanco] === 1) {
-            totalFaltas++;
-        } 
-        // 2. LÓGICA DO "TODAS AS MATÉRIAS"
-        else if (dia.faltas === 1) {
-            let faltaTemDonoEspecifico = false;
-            for (let i = 0; i < todasAsChavesEspecificas.length; i++) {
-                if (dia[todasAsChavesEspecificas[i]] === 1) {
-                    faltaTemDonoEspecifico = true;
-                    break;
-                }
-            }
-            if (!faltaTemDonoEspecifico) {
-                totalFaltas++;
+    // 2. Percorre os dias registrados no diário do aluno
+    for (let d in aluno.diary) {
+        let entry = aluno.diary[d];
+        if (typeof entry === 'object' && entry !== null) {
+            
+            // Verifica se a justificativa foi preenchida
+            let temJustificativa = entry.just && String(entry.just).trim() !== "" && entry.just !== "Aguarde...";
+            
+            // Se houver justificativa, conta como falta (1), corrigindo até os dias antigos
+            if (temJustificativa) {
+                totalFaltas += 1;
+            } else {
+                // Caso contrário, faz a leitura padrão do banco
+                let valorDoDia = (entry[nomeCampo] !== undefined) ? entry[nomeCampo] : (entry.faltas || 0);
+                totalFaltas += Number(valorDoDia);
             }
         }
-    });
-
+    }
     return totalFaltas;
 }
 
