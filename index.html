@@ -7,7 +7,7 @@
     <title>Portal de Gestão - Colégio GP</title>
 
     <!-- 2. BIBLIOTECAS EXTERNAS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script> 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>  
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
@@ -7327,28 +7327,83 @@ function openClass(className) {
                 </select>
             </div>
 
-            <div id="divSeletorMateria" style="flex: 2;">
-                <label style="color: #1565c0; font-weight: bold; display: block; margin-bottom: 5px;">SELECIONAR MATÉRIAS</label>
-                <details id="detMat" style="border: 1px solid #1565c0; border-radius: 5px; background: #fff; position: relative;">
-                    <summary style="padding: 10px; font-weight: bold; cursor: pointer; user-select: none; color: #333; outline: none; list-style: none;">
-                        ▼ Escolher matérias...
-                    </summary>
-                    <div style="position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #1565c0; border-radius: 0 0 5px 5px; padding: 10px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); max-height: 220px; overflow-y: auto; z-index: 9999;">
-                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="TODAS" checked onchange="renderAttend()" style="width: 16px; height: 16px;"> TODAS AS MATÉRIAS</label>
-                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="portugues" onchange="renderAttend()" style="width: 16px; height: 16px;"> PORTUGUÊS</label>
-                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="matematica" onchange="renderAttend()" style="width: 16px; height: 16px;"> MATEMÁTICA</label>
-                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="historia" onchange="renderAttend()" style="width: 16px; height: 16px;"> HISTÓRIA</label>
-                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="geografia" onchange="renderAttend()" style="width: 16px; height: 16px;"> GEOGRAFIA</label>
-                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="ciencias" onchange="renderAttend()" style="width: 16px; height: 16px;"> CIÊNCIAS</label>
-                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="arte" onchange="renderAttend()" style="width: 16px; height: 16px;"> ARTE</label>
-                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="ingles" onchange="renderAttend()" style="width: 16px; height: 16px;"> INGLÊS</label>
-                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="edfisica" onchange="renderAttend()" style="width: 16px; height: 16px;"> ED. FÍSICA</label>
-                    </div>
-                </details>
-            </div>
-        </div>
+       
+<div id="divSeletorMateria" style="flex: 2;">
+    <label style="color: #1565c0; font-weight: bold; display: block; margin-bottom: 5px;">SELECIONAR MATÉRIAS</label>
+    <details id="detMat" style="border: 1px solid #1565c0; border-radius: 5px; background: #fff; position: relative;">
+        <summary style="padding: 10px; font-weight: bold; cursor: pointer; user-select: none; color: #333; outline: none; list-style: none;">
+            ▼ Escolher matérias...
+        </summary>
+        <div style="position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #1565c0; border-radius: 0 0 5px 5px; padding: 10px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); max-height: 350px; overflow-y: auto; z-index: 9999;">
+            
+            <!-- 🎛️ PAINEL DE SELEÇÃO RÁPIDA -->
+            <div style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; border-bottom: 2px dashed #bbdefb; margin-bottom: 5px;">
+                
+                <button type="button" class="main-button" 
+                    style="background: #e8f5e9 !important; color: #1b5e20 !important; border: 1px solid #a5d6a7 !important; box-shadow: 0px 3px 0px #81c784 !important; border-radius: 6px !important; padding: 8px; cursor: pointer; font-size: 0.85em; font-weight: bold; width: 100%; text-align: left; transition: 0.1s;"
+                    onmousedown="this.style.boxShadow='0px 1px 0px #81c784'; this.style.transform='translateY(2px)'"
+                    onmouseup="this.style.boxShadow='0px 3px 0px #81c784'; this.style.transform='translateY(0)'"
+                    onmouseleave="this.style.boxShadow='0px 3px 0px #81c784'; this.style.transform='translateY(0)'"
+                    onclick="selecionarLoteMaterias('todas')">
+                    ✅ TODAS AS MATÉRIAS: 8 
+                </button>
 
-        <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">        
+                <button type="button" class="main-button" 
+                    style="background: #e3f2fd !important; color: #0d47a1 !important; border: 1px solid #bbdefb !important; box-shadow: 0px 3px 0px #90caf9 !important; border-radius: 6px !important; padding: 8px; cursor: pointer; font-size: 0.85em; font-weight: bold; width: 100%; text-align: left; transition: 0.1s;"
+                    onmousedown="this.style.boxShadow='0px 1px 0px #90caf9'; this.style.transform='translateY(2px)'"
+                    onmouseup="this.style.boxShadow='0px 3px 0px #90caf9'; this.style.transform='translateY(0)'"
+                    onmouseleave="this.style.boxShadow='0px 3px 0px #90caf9'; this.style.transform='translateY(0)'"
+                    onclick="selecionarLoteMaterias('menos_ingles')">
+                    ➖ MENOS INGLÊS: 7
+                </button>
+
+                <button type="button" class="main-button" 
+                    style="background: #fbe9e7 !important; color: #bf360c !important; border: 1px solid #ffab91 !important; box-shadow: 0px 3px 0px #ff8a65 !important; border-radius: 6px !important; padding: 8px; cursor: pointer; font-size: 0.85em; font-weight: bold; width: 100%; text-align: left; transition: 0.1s;"
+                    onmousedown="this.style.boxShadow='0px 1px 0px #ff8a65'; this.style.transform='translateY(2px)'"
+                    onmouseup="this.style.boxShadow='0px 3px 0px #ff8a65'; this.style.transform='translateY(0)'"
+                    onmouseleave="this.style.boxShadow='0px 3px 0px #ff8a65'; this.style.transform='translateY(0)'"
+                    onclick="selecionarLoteMaterias('menos_edfisica')">
+                    ➖ MENOS ED. FÍSICA: 7
+                </button>
+
+                <button type="button" class="main-button" 
+                    style="background: #f3e5f5 !important; color: #4a148c !important; border: 1px solid #e1bee7 !important; box-shadow: 0px 3px 0px #ce93d8 !important; border-radius: 6px !important; padding: 8px; cursor: pointer; font-size: 0.85em; font-weight: bold; width: 100%; text-align: left; transition: 0.1s;"
+                    onmousedown="this.style.boxShadow='0px 1px 0px #ce93d8'; this.style.transform='translateY(2px)'"
+                    onmouseup="this.style.boxShadow='0px 3px 0px #ce93d8'; this.style.transform='translateY(0)'"
+                    onmouseleave="this.style.boxShadow='0px 3px 0px #ce93d8'; this.style.transform='translateY(0)'"
+                    onclick="selecionarLoteMaterias('menos_ingles_edfisica')">
+                    ➖ MENOS ED. FÍSICA E INGLÊS: 6
+                </button>
+
+                <button type="button" class="main-button" 
+                    style="background: #ffebee !important; color: #c62828 !important; border: 1px solid #ffcdd2 !important; box-shadow: 0px 3px 0px #ef9a9a !important; border-radius: 6px !important; padding: 8px; cursor: pointer; font-size: 0.85em; font-weight: bold; width: 100%; text-align: left; transition: 0.1s;"
+                    onmousedown="this.style.boxShadow='0px 1px 0px #ef9a9a'; this.style.transform='translateY(2px)'"
+                    onmouseup="this.style.boxShadow='0px 3px 0px #ef9a9a'; this.style.transform='translateY(0)'"
+                    onmouseleave="this.style.boxShadow='0px 3px 0px #ef9a9a'; this.style.transform='translateY(0)'"
+                    onclick="selecionarLoteMaterias('nada')">
+                    ❌ TODAS DESMARCADAS: 0
+                </button>
+            </div>
+            <!-- FIM DO PAINEL -->
+
+            <!-- Caixas individuais -->
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="portugues" checked onchange="renderAttend()" style="width: 16px; height: 16px;"> PORTUGUÊS</label>
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="matematica" checked onchange="renderAttend()" style="width: 16px; height: 16px;"> MATEMÁTICA</label>
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="historia" checked onchange="renderAttend()" style="width: 16px; height: 16px;"> HISTÓRIA</label>
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="geografia" checked onchange="renderAttend()" style="width: 16px; height: 16px;"> GEOGRAFIA</label>
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="ciencias" checked onchange="renderAttend()" style="width: 16px; height: 16px;"> CIÊNCIAS</label>
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="arte" checked onchange="renderAttend()" style="width: 16px; height: 16px;"> ARTE</label>
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="ingles" checked onchange="renderAttend()" style="width: 16px; height: 16px;"> INGLÊS</label>
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><input type="checkbox" class="chk-materia" value="edfisica" checked onchange="renderAttend()" style="width: 16px; height: 16px;"> ED. FÍSICA</label>
+        </div>
+    </details>
+</div>
+        
+
+
+</div>
+
+<div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">        
             <div class="form-group" style="margin:0">
                 <label>Data da Chamada</label>
                 <input type="date" id="date-attend" value="${new Date().toISOString().split('T')[0]}" onchange="renderAttend()" style="padding:8px;">
@@ -7359,21 +7414,7 @@ function openClass(className) {
         </div>
         <div id="view-attend"></div>
         <button class="main-button save-button" style="margin-top:15px; width:100%; height: 45px; background-color: #e8f5e9 !important; color: #1b5e20 !important; border: 1px solid #a5d6a7 !important; box-shadow: 0px 5px 0px #81c784 !important; border-radius: 8px !important; font-weight: bold !important; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;" 
-        onclick="
-            let objData = document.getElementById('date-attend').value.split('-');
-            let dataFormatada = objData[2] + '/' + objData[1] + '/' + objData[0];
-            let chks = document.querySelectorAll('.chk-materia:checked');
-            let selecionadas = Array.from(chks).map(chk => chk.parentNode.textContent.trim()).join(', ');
-            
-            if(selecionadas === '') {
-                alert('Por favor, selecione ao menos uma matéria!');
-                return;
-            }
-
-            if(confirm('Confirma o salvamento da chamada de: ' + selecionadas + ' para o dia ' + dataFormatada + '?')) { 
-                saveAttend(); 
-            }
-        ">
+        onclick="saveAttend()">
             📝 Salvar Chamada
         </button>
     </div>
@@ -7817,6 +7858,31 @@ function populateSubjectSelects() {
 
 var isAllSelected = false;
 
+
+// =========================================================
+// FUNÇÃO: SELEÇÃO RÁPIDA DE MÚLTIPLAS MATÉRIAS NA CHAMADA
+// =========================================================
+window.selecionarLoteMaterias = function(tipo) {
+    document.querySelectorAll('.chk-materia').forEach(chk => chk.checked = false);
+
+    document.querySelectorAll('.chk-materia').forEach(chk => {
+        let v = chk.value.toLowerCase().trim();
+        
+        if (tipo === 'todas') {
+            chk.checked = true;
+        } else if (tipo === 'menos_ingles') {
+            if (v !== 'ingles' && v !== 'inglês') chk.checked = true;
+        } else if (tipo === 'menos_edfisica') {
+            if (v !== 'edfisica' && v !== 'ed_fisica' && v !== 'educação física' && v !== 'ed. fisica' && v !== 'educacao fisica') chk.checked = true;
+        } else if (tipo === 'menos_ingles_edfisica') {
+            if (v !== 'ingles' && v !== 'inglês' && v !== 'edfisica' && v !== 'ed_fisica' && v !== 'educação física' && v !== 'ed. fisica' && v !== 'educacao fisica') chk.checked = true;
+        }
+    });
+
+    renderAttend();
+};
+
+
 function renderAttend() {
     const MateriaDoProfessorLogado = "MASTER"; 
     const painelControle = document.getElementById('divSeletorMateria');
@@ -8029,19 +8095,67 @@ function saveAttend() {
   const d = document.getElementById('date-attend').value;
   if (!d) { alert("Selecione uma data!"); return; }
 
-  // 1. Coleta todas as matérias marcadas nos checkboxes
+  const objData = d.split('-');
+  const dataFormatada = objData[2] + '/' + objData[1] + '/' + objData[0];
+
+  // =====================================================================
+  // 1. COLETA E PADRONIZAÇÃO DAS MATÉRIAS
+  // =====================================================================
   const chksMat = document.querySelectorAll('.chk-materia:checked');
+  
+  if (chksMat.length === 0) {
+      alert('Por favor, selecione ao menos uma matéria!');
+      return;
+  }
+
   let materiasSelecionadas = [];
+  let nomesParaExibicao = []; // Guarda o nome bonito para mostrar no alerta
+  let temIngles = false;
+  let temEdFisica = false;
+
   chksMat.forEach(chk => {
-      if (chk.value !== "TODAS") {
-          materiasSelecionadas.push(chk.value);
+      let v = chk.value.toLowerCase().trim();
+      let nomeLabel = chk.parentNode.textContent.trim();
+      
+      let ehIngles = (v === 'ingles' || v === 'inglês');
+      let ehEdFisica = (v === 'edfisica' || v === 'ed_fisica' || v === 'educação física' || v === 'ed. fisica' || v === 'educacao fisica');
+
+      if (ehIngles) {
+          temIngles = true;
+          materiasSelecionadas.push("ingles");
+      } else if (ehEdFisica) {
+          temEdFisica = true;
+          materiasSelecionadas.push("edfisica");
+      } else if (v !== "todas") {
+          materiasSelecionadas.push(v);
+      }
+
+      if (v !== "todas") {
+          nomesParaExibicao.push(nomeLabel);
       }
   });
 
-  // Se o checkbox "TODAS" estava marcado, pegamos todas as opções disponíveis
-  if (document.querySelector('.chk-materia[value="TODAS"]:checked')) {
-      materiasSelecionadas = ["portugues", "matematica", "historia", "geografia", "ciencias", "arte", "ingles", "edfisica"];
+  let textoMaterias = nomesParaExibicao.join(', ');
+
+  // =====================================================================
+  // 🚨 MENSAGEM ÚNICA DE CONFIRMAÇÃO (LOGO NO PRIMEIRO CLIQUE)
+  // =====================================================================
+  let msgConfirmacao = "";
+
+  if (temIngles || temEdFisica) {
+      let especialidades = [];
+      if (temIngles) especialidades.push("INGLÊS");
+      if (temEdFisica) especialidades.push("ED. FÍSICA");
+
+      msgConfirmacao = `⚠️ ATENÇÃO: MATÉRIAS DE ESPECIALISTAS!\n\nVocê incluiu as disciplinas de ${especialidades.join(" e ")}.\nPara não haver conflito com o registro dos professores especialistas, confirme com atenção.\n\nVocê REALMENTE deseja salvar a chamada de:\n👉 ${textoMaterias}\n\nPara o dia ${dataFormatada}?`;
+  } else {
+      msgConfirmacao = `Confirma o salvamento da chamada de:\n👉 ${textoMaterias}\n\nPara o dia ${dataFormatada}?`;
   }
+
+  if (!confirm(msgConfirmacao)) {
+      return; // Usuário cancelou, o salvamento é abortado
+  }
+  // =====================================================================
 
   // =====================================================================
   // 🛡️ VERIFICAÇÃO DE CHAMADA DUPLICADA (SOBRESCRITA)
@@ -8060,9 +8174,6 @@ function saveAttend() {
   }
 
   if (chamadaJaExiste) {
-      const objData = d.split('-');
-      const dataFormatada = objData[2] + '/' + objData[1] + '/' + objData[0];
-      
       const sobrescrever = confirm(`⚠️ ATENÇÃO!\n\nJá existe uma chamada registrada para o dia ${dataFormatada} nas matérias selecionadas.\n\nVocê deseja SOBRESCREVER os dados anteriores? (Clique em 'Cancelar' para abortar e manter a chamada original).`);
       
       if (!sobrescrever) {
@@ -8085,7 +8196,7 @@ function saveAttend() {
     }
   });
 
-  if (conflito && !confirm("Conflito detectado (Presença com Justificativa). Salvar assim mesmo?")) return;		
+  if (conflito && !confirm("Conflito detectado (Presença com Justificativa). Salvar assim mesmo?")) return;        
 
   // 3. Processamento, Contagem e Salvamento
   let totalPresentes = 0;
@@ -8110,7 +8221,7 @@ function saveAttend() {
     }
 
     const faltaParaO_Diario = alunoPresente ? 0 : 1;
-const faltaParaO_Boletim = alunoPresente ? 0 : 1;
+    const faltaParaO_Boletim = alunoPresente ? 0 : 1;
     
     masterData[currentClassContext][idx].diary[d].just = justs[i].value;
 
@@ -8127,15 +8238,13 @@ const faltaParaO_Boletim = alunoPresente ? 0 : 1;
   // ==========================================
   // O ESPIÃO REGISTRA A CHAMADA REALIZADA
   // ==========================================
-  const objDataLog = d.split('-');
-  const dataLogFormatada = objDataLog[2] + '/' + objDataLog[1] + '/' + objDataLog[0];
-  registrarLog("REGISTRO DE CHAMADA", `Salvou chamada da turma ${currentClassContext} para a data ${dataLogFormatada} (Matérias: ${materiasSelecionadas.join(", ")}). Presenças: ${totalPresentes}, Ausentes: ${totalAusentes}, Justificadas: ${totalJustificadas}.`);
+  registrarLog("REGISTRO DE CHAMADA", `Salvou chamada da turma ${currentClassContext} para a data ${dataFormatada} (Matérias: ${materiasSelecionadas.join(", ")}). Presenças: ${totalPresentes}, Ausentes: ${totalAusentes}, Justificadas: ${totalJustificadas}.`);
 
   // ==========================================
   // ALERTA DETALHADO COM O RESUMO DA CLASSE
   // ==========================================
   const totalAlunos = chksAlunos.length;
-  alert(`✅ CHAMADA SALVA COM SUCESSO!\n\n📊 RESUMO DA CLASSE (${totalAlunos} Alunos no total):\n• PRESENÇA: ${totalPresentes} aluno(s)\n• AUSENTES: ${totalAusentes} aluno(s)\n• FALTA(S) JUSTIFICADA(S): ${totalJustificadas} aluno(s)\n\nMatérias: ${materiasSelecionadas.join(", ").toUpperCase()}\nData: ${dataLogFormatada}`);
+  alert(`✅ CHAMADA SALVA COM SUCESSO!\n\n📊 RESUMO DA CLASSE (${totalAlunos} Alunos no total):\n• PRESENÇA: ${totalPresentes} aluno(s)\n• AUSENTES: ${totalAusentes} aluno(s)\n• FALTA(S) JUSTIFICADA(S): ${totalJustificadas} aluno(s)\n\nMatérias: ${textoMaterias.toUpperCase()}\nData: ${dataFormatada}`);
   
   renderAttend();
 }
