@@ -7,15 +7,15 @@
     <title>Portal de Gestão - Colégio GP</title>
 
     <!-- 2. BIBLIOTECAS EXTERNAS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>    
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
     <!-- 3. SCRIPT PRINCIPAL DO PORTAL -->
     <script>
-    // =======================================================
+    // =========================================================
     // INICIALIZAÇÃO DO FIREBASE
-    // =======================================================
+    // =========================================================
     const firebaseConfig = {
       apiKey: "AIzaSyBEwojx6crH5h1hZN0FUcO2bmumzHdcdL8",
       authDomain: "portal-gp-e702f.firebaseapp.com",
@@ -29,9 +29,9 @@
     firebase.initializeApp(firebaseConfig);  
     const db = firebase.firestore();
 
-    // =======================================================
+    // =========================================================
     // MATA-CACHE (SERVICE WORKER)
-    // =======================================================
+    // =========================================================
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
           for(let registration of registrations) {
@@ -4718,13 +4718,15 @@ function printReport() {
         return; 
     }
     
-    const students = masterData[currentClassContext];
+const students = masterData[currentClassContext];
     if (!students || students.length === 0) { 
         alert('Nenhum aluno nesta turma.'); 
         return; 
     }
     
-    students.sort((a, b) => a.name.localeCompare(b.name));
+    // A linha abaixo foi removida/comentada para não forçar a ordem alfabética 
+    // e manter os alunos novatos na última posição!
+    // students.sort((a, b) => a.name.localeCompare(b.name));
     
     const limit = (typeof config !== 'undefined' && config.minGrade) ? parseFloat(config.minGrade) : 6.0;
     const logoUrl = "LOGO GP.png"; 
